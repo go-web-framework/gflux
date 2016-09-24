@@ -135,6 +135,12 @@ func (t *Tree) Insert(s string, v interface{}) (interface{}, bool) {
 	var parent *node
 	n := t.root
 	search := s
+
+	//if s does not end with a forward slash, append '/' to s
+	if len(s) != 0 && search[len(s) - 1] != '/' {
+		search = s + "/"
+	}
+	
 	for {
 		// Handle key exhaution
 		if len(search) == 0 {
@@ -296,6 +302,11 @@ func (n *node) mergeChild() {
 func (t *Tree) Get(s string) (interface{}, bool) {
 	n := t.root
 	search := s
+	//if s does not end with a forward slash, append '/' to s
+	if len(s) != 0 && search[len(s) - 1] != '/' {
+		search = s + "/"
+	}
+
 	for {
 		// Check for key exhaution
 		if len(search) == 0 {
