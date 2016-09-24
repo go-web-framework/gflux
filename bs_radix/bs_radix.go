@@ -60,6 +60,13 @@ func (n *node) getEdge(label byte) *node {
 	if idx < num && n.edges[idx].label == label {
 		return n.edges[idx].node
 	}
+
+	//var tester byte= "{:Id}/"
+	/*
+	if idx < num && n.edges[idx].label == "{:Id}/" {
+		return n.edges[idx].node
+	}
+	*/
 	return nil
 }
 
@@ -321,7 +328,6 @@ func (t *Tree) Get(s string) (interface{}, bool) {
 		if n == nil {
 			break
 		}
-
 		// Consume the search prefix
 		if strings.HasPrefix(search, n.prefix) {
 			search = search[len(n.prefix):]
@@ -329,8 +335,49 @@ func (t *Tree) Get(s string) (interface{}, bool) {
 			break
 		}
 	}
+	val, found := t.GetWildCard(s)
+	if found {
+		return val, true
+	} else {
+		return nil, false
+	}
+	
+}
+
+// Get is used to lookup a specific key, returning
+// the value and if it was found
+func (t *Tree) GetWildCard(s string) (interface{}, bool) {
+	n := t.root
+	search := strings.TrimSuffix(s, "/")
+	index := strings.LastIndexByte(search, '/')
+	search = search[:index]
+	search += "/{:Id}/"
+
+	for {
+		// Check for key exhaution
+		if len(search) == 0 {
+			if n.isLeaf() {
+				return n.leaf.val, true
+			}
+			break
+		}
+
+		// Look for an edge
+		n = n.getEdge(search[0])
+		if n == nil {
+			break
+		}
+		// Consume the search prefix
+		if strings.HasPrefix(search, n.prefix) {
+			search = search[len(n.prefix):]
+		} else {
+			break
+		}
+	}
+
 	return nil, false
 }
+
 
 
 

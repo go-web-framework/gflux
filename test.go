@@ -14,22 +14,23 @@ func main(){
 	testHandler1 := testHandler{}
 	testMux.Handle("/test", nil, testHandler1)
 	testRadix := bs_radix.New()
+	/*
 	testRadix.Insert("/home", 2)
-	testRadix.Insert("/ee445L/pg", 2)
-	fmt.Println("testRadix is ", testRadix)
-	fmt.Println("size of tree is now ", testRadix.Len())
 	fmt.Println("size of tree is now ", testRadix.Len())
 	//fmt.Println("Now listening at :8080 ... ")
 	//http.ListenAndServe(":8080", testMux)
+	error := 0
 
 	//BEGIN TEST : ensure both "/SDP" and "/SDP/" return the same value
+	fmt.Println("")
+	error = 0
 	testRadix.Insert("/SDP", 1234)
 	size1 := testRadix.Len()
 	testRadix.Insert("/SDP/", 1234)
 	val, found := testRadix.Get("/SDP")
 	val2, found2 := testRadix.Get("/SDP/")
 	size2 := testRadix.Len()
-	error := 0
+	
 	if size1 != size2 {
 		fmt.Println("Size of tree remained same")
 		error++;
@@ -43,12 +44,49 @@ func main(){
 		error++
 	}
 	if error == 0 {
-		fmt.Println("Attempting to insert /SDP and /SDP/ did not cause multiple entries")
-		fmt.Println("Both /SDP and /SDP/ are both returned by Get call and return the same value")
 		fmt.Println("/SDP and /SDP/ test successful")
-
 	}
 	//END TEST
+
+	//BEGIN TEST : wildcard placeholder test
+	error = 0
+	fmt.Println("")
+	fmt.Println("Starting size of tree : ", testRadix.Len())
+	fmt.Println("Inserting (/EE445L, 400) ")
+	fmt.Println("Inserting (/EE445L/Aug, 500) ")
+	fmt.Println("Inserting (/EE445L/{:Id}, 600) ")
+	testRadix.Insert("/EE445L", 400)
+	testRadix.Insert("/EE445L/Aug", 500)
+	testRadix.Insert("/EE445L/{:Id}", 600)
+	fmt.Println("Size of tree is now ", testRadix.Len())
+	fmt.Println("Attempting to search for /EE445L/Sept should return value of 600")
+	val, found = testRadix.Get("/EE445L/Sept")
+	if found {
+		fmt.Println("/EE445L/Sept was found. Val : ", val)
+	} else {
+			fmt.Println("/EE445L/Sept was not found. ")
+			error ++
+	}
+
+	if error == 0 {
+		fmt.Println("/{:Id} test successful")
+	}
+	//END TEST
+*/
+	fmt.Println("Inserting (/EE445L, 400) ")
+	testRadix.Insert("/EE445L", 400)
+	testRadix.Insert("/EE445L/Aug", 500)
+	testRadix.Insert("/EE445L/Sept", 600)
+	testRadix.Insert("/EE445L/Sands", 700)
+	testRadix.Insert("/EE445L/{:Id}", 800)
+	_, found := testRadix.Get("/EE445L/Sands")
+	if found {
+		fmt.Println("********************/EE445L/Sands was found")
+	}
+	_, found = testRadix.Get("/EE445L/Oct")
+	if found {
+		fmt.Println("**********************/EE445L/Oct was found")
+	}
 }
 
 type testHandler struct{
