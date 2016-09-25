@@ -3,47 +3,107 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
 	"./mux"
+	"net/http/httptest"
 	"testing"
 )
 
-func TestMux(t *testing.T){
-	
-	testMux := mux.New()
-	testHandler1 := testHandler{}
-	testHandler2 := homeHandler{}
-	testHandler3 := handler404{}
-	testMux.Handle("/test", nil, testHandler1)
-	testMux.Handle("/home", nil, testHandler2)
-	testMux.SetNotFound(testHandler3)
-	fmt.Println("Listening on :8080")
-	http.ListenAndServe(":8080", testMux)
-	
+// Test if the route is valid
+func TestRouting1(t *testing.T) {
+	mux := mux.New()
+	call := false
+	mux.Handle("/a/", nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		call = true
+	}))
+
+	r, _ := http.NewRequest("GET", "/b/123", nil)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, r)
+
+	if call {
+		t.Error("handler should not be called")
+	}
 }
 
-type testHandler struct{
+// Test if the route is valid
+func TestRouting2(t *testing.T) {
+	mux := mux.New()
+	call := false
+	mux.Handle("/a/", nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		call = true
+	}))
+
+	r, _ := http.NewRequest("GET", "/a/", nil)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, r)
+
+	if !call {
+		t.Error("handler should be called")
+	}
 }
 
-func (t testHandler) ServeHTTP(w http.ResponseWriter, r *http.Request){
-	fmt.Fprintf(w, "<h1>Test</h1>")
-	return
+// Test the custom not handler handler sets 404 error code
+func TestNotFoundCustomHandlerSends404(t *testing.T) {
+	mux := mux.New()
+	mux.SetNotFound(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		rw.WriteHeader(404)
+		rw.Write([]byte("You've reached a custom 404!"))
+	}))
+
+	r, _ := http.NewRequest("GET", "/b/123", nil)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, r)
+
+	if w.Code != 404 {
+		t.Errorf("expecting error code 404, got %v", w.Code)
+	}
 }
 
-type homeHandler struct{
+// Test the custom not handler handler sets 404 error code
+func TestNotFoundDefaultHandlerSends404(t *testing.T) {
+	mux := mux.New()
+
+	r, _ := http.NewRequest("GET", "/b/123", nil)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, r)
+
+	if w.Code != 404 {
+		t.Errorf("expecting error code 404, got %v", w.Code)
+	}
 }
 
-func (t homeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request){
-	fmt.Fprintf(w, "<h1>Home</h1>")
-	return
+// Test forward slash compatibility
+func TestForwardSlashBehavior1(t *testing.T) {
+	mux := mux.New()
+	call := false
+	mux.Handle("/a", nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		call = true
+	}))
+
+	r, _ := http.NewRequest("GET", "/a/", nil)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, r)
+
+	if !call {
+		t.Error("handler should be called")
+	}
 }
 
-type handler404 struct{
-}
+// Test forward slash compatibility
+func TestForwardSlashBehavior2(t *testing.T) {
+	mux := mux.New()
+	call := false
+	mux.Handle("/a/", nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		call = true
+	}))
 
-func (t handler404) ServeHTTP(w http.ResponseWriter, r *http.Request){
-	fmt.Fprintf(w, "<h1>You've reached a custom 404!</h1>")
-	return
+	r, _ := http.NewRequest("GET", "/a", nil)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, r)
+
+	if !call {
+		t.Error("handler should be called")
+	}
 }
 
