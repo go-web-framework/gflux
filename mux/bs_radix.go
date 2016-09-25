@@ -1,13 +1,10 @@
-package bs_radix
+package mux
 
 import (
 	"sort"
 	"strings"
 	"net/http"
 )
-
-// Middleware represents an HTTP middlware function.
-type Middleware func(w http.ResponseWriter, r *http.Request) error
 
 type Route struct {
 	Path       string
@@ -114,19 +111,19 @@ func (e edges) Sort() {
 // Dictionary abstract data type. The main advantage over
 // a standard hash map is prefix-based lookups and
 // ordered iteration,
-type Tree struct {
+type Trie struct {
 	root *node
 	size int
 }
 
 // New returns an empty Tree
-func New() *Tree {
-	t := &Tree{root: &node{}}
+func NewTrie() *Trie {
+	t := &Trie{root: &node{}}
 	return t
 }
 
 // Len is used to return the number of elements in the tree
-func (t *Tree) Len() int {
+func (t *Trie) Len() int {
 	return t.size
 }
 
@@ -147,20 +144,32 @@ func longestPrefix(k1, k2 string) int {
 }
 
 // NewRoute return a pointer to a Route instance and call save() on it
-func (t *Tree) NewRoute(url string, h http.Handler, mid []Middleware, methods []string) *Route {
-	r := &Route{
+func (t *Trie) NewRoute(url string, h http.Handler, mid []Middleware, methods []string) *Route {
+	  r := &Route{
 		Path: url, 
 		Handler: h,
-		Middleware: append(mid),
-		Methods: append(methods),
+		Middleware: mid,
+		Methods: methods,
 	}
 	t.insert(r)
 	return r
 }
 
+// NewRoute return a pointer to a Route instance and call save() on it
+func (t *Trie) UpdateRouteMethods(path string, method ...string) bool {
+	val, found := t.Get(path)
+	if !found || val.Path != path {
+		return false
+	}
+
+	methods := []string{}
+	val.Methods = append(methods, method...)
+	return true
+}
+
 // Insert is used to add a newentry or update
 // an existing entry. Returns if updated.
-func (t *Tree) insert(r *Route) bool {
+func (t *Trie) insert(r *Route) bool {
 	var parent *node
 	n := t.root
 	search := r.Path
@@ -264,7 +273,7 @@ func (t *Tree) insert(r *Route) bool {
 
 // Delete is used to delete a key, returning the previous
 // value and if it was deleted
-func (t *Tree) Delete(s string) (bool) {
+func (t *Trie) Delete(s string) (bool) {
 	var parent *node
 	var label byte
 	n := t.root
@@ -328,7 +337,7 @@ func (n *node) mergeChild() {
 
 // Get is used to lookup a specific key, returning
 // the value and if it was found
-func (t *Tree) Get(s string) (*Route, bool) {
+func (t *Trie) Get(s string) (*Route, bool) {
 	n := t.root
 	search := s
 	//if s does not end with a forward slash, append '/' to s
@@ -357,18 +366,18 @@ func (t *Tree) Get(s string) (*Route, bool) {
 			break
 		}
 	}
-	val, found := t.GetWildCard(s)
-	if found {
-		return val, true
-	} else {
+	//val, found := t.GetWildCard(s)
+	//if found {
+	//	return val, true
+	//} else {
 		return nil, false
-	}
+	//}
 	
 }
 
 // Get is used to lookup a specific key, returning
 // the value and if it was found
-func (t *Tree) GetWildCard(s string) (*Route, bool) {
+func (t *Trie) GetWildCard(s string) (*Route, bool) {
 	n := t.root
 	search := strings.TrimSuffix(s, "/")
 	index := strings.LastIndexByte(search, '/')
