@@ -3,6 +3,7 @@ package mux
 import (
 	"errors"
 	"net/http"
+	"../bs_radix"
 	)
 
 var Stop = errors.New("exit request handling")
@@ -26,6 +27,11 @@ func (t treeImpl) Set(p string, m *Entry) {
 	t[p] = m
 }
 
+// Register the new route in the router with the provided handler
+func (m *Mux) register(path string, entry *Entry) {
+		m.radix.NewRoute(path, entry.Handler)
+}
+
 type Entry struct {
 	Path       string
 	Middleware []Middleware
@@ -41,11 +47,13 @@ func (e *Entry) Allow(methods ...string) *Entry {
 // Mux is a serve mux.
 type Mux struct {
 	tree tree
+	radix *bs_radix.Tree
 }
 
 func New() *Mux {
 	return &Mux{
 		tree: make(treeImpl),
+		radix: bs_radix.New(),
 	}
 }
 
@@ -56,12 +64,17 @@ func (m *Mux) Handle(path string, mw []Middleware, h http.Handler) *Entry {
 		Handler:    h,
 		Methods:    nil,
 	}
-	m.tree.Set(path, e)
+	m.register(path, e)
 	return e
 }
 
 func (m *Mux) ServeHTTP(w http.ResponseWriter, r *http.Request){
-	e, _ := m.tree.Get(r.URL.Path);
+	//e, _ := m.tree.Get(r.URL.Path);
+	e, found := m.radix.Get(r.URL.Path);
+	if !found {
+		//create an error
+	}
+	/*
 	//iterator best way?
 	for _, middleware := range e.Middleware{
 		err := middleware(w, r)
@@ -69,6 +82,8 @@ func (m *Mux) ServeHTTP(w http.ResponseWriter, r *http.Request){
   		//middleware error
 		}
 	}
+	*/
 	//method check?
 	e.Handler.ServeHTTP(w, r)
 }
+

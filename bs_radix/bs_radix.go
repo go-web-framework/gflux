@@ -3,13 +3,23 @@ package bs_radix
 import (
 	"sort"
 	"strings"
+	"net/http"
 )
 
+// Middleware represents an HTTP middlware function.
+type Middleware func(w http.ResponseWriter, r *http.Request) error
+
+type Route struct {
+	Path       string
+	Middleware []Middleware
+	Handler    http.Handler
+	Methods    []string // Allowed HTTP methods.
+}
 
 // leafNode is used to represent a value
 type leafNode struct {
 	key string
-	val interface{}
+	val *Route
 }
 
 // edge is used to represent an edge node
@@ -136,37 +146,44 @@ func longestPrefix(k1, k2 string) int {
 	return i
 }
 
+// NewRoute return a pointer to a Route instance and call save() on it
+func (t *Tree) NewRoute(url string, h http.Handler) *Route {
+	r := &Route{Path: url, Handler: h}
+	t.insert(r)
+	return r
+}
+
 // Insert is used to add a newentry or update
 // an existing entry. Returns if updated.
-func (t *Tree) Insert(s string, v interface{}) (interface{}, bool) {
+func (t *Tree) insert(r *Route) bool {
 	var parent *node
 	n := t.root
-	search := s
+	search := r.Path
 
-	//if s does not end with a forward slash, append '/' to s
-	if len(s) != 0 && search[len(s) - 1] != '/' {
-		search = s + "/"
+	//if search query does not end with a forward slash, append '/' to s
+	if len(search) != 0 && search[len(search) - 1] != '/' {
+		search = r.Path + "/"
 	}
 	
 	for {
 		// Handle key exhaution
 		if len(search) == 0 {
 			if n.isLeaf() {
-				old := n.leaf.val
-				n.leaf.val = v
-				return old, true
+				n.leaf.val = r
+				return true
 			}
 
 			n.leaf = &leafNode{
-				key: s,
-				val: v,
+				key: r.Path,
+				val: r,
 			}
 			t.size++
-			return nil, false
+			return false
 		}
 
 		// Look for the edge
 		parent = n
+		
 		n = n.getEdge(search[0])
 
 		// No edge, create one
@@ -175,8 +192,8 @@ func (t *Tree) Insert(s string, v interface{}) (interface{}, bool) {
 				label: search[0],
 				node: &node{
 					leaf: &leafNode{
-						key: s,
-						val: v,
+						key: r.Path,
+						val: r,
 					},
 					prefix: search,
 					
@@ -184,7 +201,7 @@ func (t *Tree) Insert(s string, v interface{}) (interface{}, bool) {
 			}
 			parent.addEdge(e)
 			t.size++
-			return nil, false
+			return false
 		}
 
 		// Determine longest prefix of the search key on match
@@ -214,15 +231,15 @@ func (t *Tree) Insert(s string, v interface{}) (interface{}, bool) {
 		
 		// Create a new leaf node
 		leaf := &leafNode{
-			key: s,
-			val: v,
+			key: r.Path,
+			val: r,
 		}
 
 		// If the new key is a subset, add to to this node
 		search = search[commonPrefix:]
 		if len(search) == 0 {
 			child.leaf = leaf
-			return nil, false
+			return false
 		}
 
 		// Create a new edge for the node
@@ -235,13 +252,14 @@ func (t *Tree) Insert(s string, v interface{}) (interface{}, bool) {
 			},
 			
 		})
-		return nil, false
+		return false
 	}
 }
 
+
 // Delete is used to delete a key, returning the previous
 // value and if it was deleted
-func (t *Tree) Delete(s string) (interface{}, bool) {
+func (t *Tree) Delete(s string) (bool) {
 	var parent *node
 	var label byte
 	n := t.root
@@ -270,11 +288,10 @@ func (t *Tree) Delete(s string) (interface{}, bool) {
 			break
 		}
 	}
-	return nil, false
+	return false
 
 DELETE:
 	// Delete the leaf
-	leaf := n.leaf
 	n.leaf = nil
 	t.size--
 
@@ -293,7 +310,7 @@ DELETE:
 		parent.mergeChild()
 	}
 
-	return leaf.val, true
+	return true
 }
 
 func (n *node) mergeChild() {
@@ -306,7 +323,7 @@ func (n *node) mergeChild() {
 
 // Get is used to lookup a specific key, returning
 // the value and if it was found
-func (t *Tree) Get(s string) (interface{}, bool) {
+func (t *Tree) Get(s string) (*Route, bool) {
 	n := t.root
 	search := s
 	//if s does not end with a forward slash, append '/' to s
@@ -346,7 +363,7 @@ func (t *Tree) Get(s string) (interface{}, bool) {
 
 // Get is used to lookup a specific key, returning
 // the value and if it was found
-func (t *Tree) GetWildCard(s string) (interface{}, bool) {
+func (t *Tree) GetWildCard(s string) (*Route, bool) {
 	n := t.root
 	search := strings.TrimSuffix(s, "/")
 	index := strings.LastIndexByte(search, '/')
