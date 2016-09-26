@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"net/http"
-	"./mux"
+	"./mux" // TODO: change this to github.com/go-web-framework/gflux/mux to allow 'go install' and 'go get'
 )
 
 func main(){
