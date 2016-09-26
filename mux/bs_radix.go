@@ -366,12 +366,12 @@ func (t *Trie) Get(s string) (*Route, bool) {
 			break
 		}
 	}
-	//val, found := t.GetWildCard(s)
-	//if found {
-	//	return val, true
-	//} else {
+	val, found := t.GetWildCard(s)
+	if found {
+		return val, true
+	} else {
 		return nil, false
-	//}
+	}
 	
 }
 

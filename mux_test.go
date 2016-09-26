@@ -107,3 +107,26 @@ func TestForwardSlashBehavior2(t *testing.T) {
 	}
 }
 
+// Test found wildcard at end of Url path
+func TestWildcard1(t *testing.T) {
+	mux := mux.New()
+	call := false
+	mux.Handle("/a/", nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		call = false
+	}))
+	mux.Handle("/a/b", nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		call = false
+	}))
+	mux.Handle("/a/{:Id}", nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		call = true
+	}))
+
+	r, _ := http.NewRequest("GET", "/a/c", nil)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, r)
+
+	if !call {
+		t.Error("handler should be called")
+	}
+}
+
