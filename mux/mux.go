@@ -3,6 +3,7 @@ package mux
 import (
 	"errors"
 	"net/http"
+	"context"
 )
 
 var Stop = errors.New("exit request handling")
@@ -35,14 +36,17 @@ func (m *Mux) ServeHTTP(w http.ResponseWriter, r *http.Request){
 			return
 	}
 
-	//iterator best way?
 	for _, middleware := range e.Middleware{
 		err := middleware(w, r)
 		if (err != nil){ //err == Stop
   		//middleware error
 		}
 	}
-
+	//currently arbitrary values
+	varValues := map[string]string{"Var1": "aaa", "2": "2"}
+	ctx := r.Context()
+	ctx = context.WithValue(ctx, int32(0), varValues)
+	r = r.WithContext(ctx)
 
 	//method check?
 	e.Handler.ServeHTTP(w, r)

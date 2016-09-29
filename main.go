@@ -23,7 +23,10 @@ type testHandler struct{
 }
 
 func (t testHandler) ServeHTTP(w http.ResponseWriter, r *http.Request){
-	fmt.Fprintf(w, "<h1>Test</h1>")
+	myVars := r.Context().Value(int32(0)).(map[string]string)
+	a := myVars["Var1"]
+	b := myVars["2"]
+	fmt.Fprintf(w, "<h1>Test %s %s</h1>", a, b)
 	return
 }
 
