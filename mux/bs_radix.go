@@ -49,18 +49,6 @@ func (n *node) addEdge(e edge) {
 	n.edges.Sort()
 }
 
-func (n *node) replaceEdge(e edge) {
-	num := len(n.edges)
-	idx := sort.Search(num, func(i int) bool {
-		return n.edges[i].label >= e.label
-	})
-	if idx < num && n.edges[idx].label == e.label {
-		n.edges[idx].node = e.node
-		return
-	}
-	panic("replacing missing edge")
-}
-
 func (n *node) getEdge(label byte) *node {
 	num := len(n.edges)
 	idx := sort.Search(num, func(i int) bool {
@@ -70,18 +58,6 @@ func (n *node) getEdge(label byte) *node {
 		return n.edges[idx].node
 	}
 	return nil
-}
-
-func (n *node) delEdge(label byte) {
-	num := len(n.edges)
-	idx := sort.Search(num, func(i int) bool {
-		return n.edges[i].label >= label
-	})
-	if idx < num && n.edges[idx].label == label {
-		copy(n.edges[idx:], n.edges[idx+1:])
-		n.edges[len(n.edges)-1] = edge{}
-		n.edges = n.edges[:len(n.edges)-1]
-	}
 }
 
 type edges []edge
@@ -277,7 +253,6 @@ func (t *Trie) insert(r *Route) error {
 
 			//need to create a new edge pointing to a new node with the common prefix
 			//add that edge to n
-
 			edge1 := edge{
 					label: child1_prefix[0],
 					node: &node{
@@ -307,7 +282,6 @@ func (t *Trie) insert(r *Route) error {
 			query = query[commonPrefix :]
 			continue
 			//the node we're attempting to insert already exists. throw an error
-			//return errors.New("attempting to insert route that already exists")
 		default:
 			break
 		}	
@@ -327,12 +301,12 @@ func (t *Trie) Get(s string) (*Route, bool) {
 	}
 	s = strings.TrimPrefix(s, "/") 
 	
-	n, found, remains := t.getLiteral(s)
+	n, found, remains := t.getLiteral(s, t.root)
 	if found {
 		return n.val, true
 	}
 
-	val,found2 := t.getWildCard(remains, n)
+	val, found2 := t.getWildCard(remains, n)
 	if found2 {
 		return val, true
 	} 
@@ -342,8 +316,7 @@ func (t *Trie) Get(s string) (*Route, bool) {
 
 // Get is used to lookup a specific key, returning
 // the value and if it was found
-func (t *Trie) getLiteral(s string) (*node, bool, string) {
-	n := t.root
+func (t *Trie) getLiteral(s string, n *node) (*node, bool, string) {
 	var child *node
 	
 	search := s
@@ -363,7 +336,7 @@ func (t *Trie) getLiteral(s string) (*node, bool, string) {
 		// Look for an edge
 		child = n.getEdge(search[0])
 		if child == nil {
-			return n, false, remaining
+			return n, false, search
 		}
 		n = child
 		// Consume the search prefix
@@ -389,43 +362,51 @@ func (t *Trie) getWildCard(s string, n *node) (*Route, bool) {
 		return nil, false
 	}
 
+	var rNode *node
+	var remains string
+	found := false
 	search := s
-	if len(s) == 0 {
-		if n.hasValue() {
-			return n.val, true
-		} else {
-			return nil, false
+
+ 	for len(search) != 0 && n != nil {
+	 	indexFirstSlash := strings.IndexByte(search, '/')
+
+		search =  "*" + search[indexFirstSlash:]
+
+		if len(search) == 0  && n.hasValue() {
+				return n.val, true
 		}
+
+		// Look for an edge
+		n = n.getEdge(search[0])
+		if n == nil {
+				return nil, false
+		}
+		
+		// Consume the search prefix
+		if strings.HasPrefix(search, n.prefix) {
+			search = search[len(n.prefix):]
+			rNode, found, remains = t.getLiteral(search, n)
+			if found {
+				return rNode.val, found
+			} else {
+				search = remains
+				continue
+			}
+		} else {
+				return nil, false
+		}
+
 	}
 
-
-
-	index := strings.LastIndexByte(search, '/')
-	if index == -1 {
-		search += "/"
-		index = len(search) - 1;
-	}
-
-	search =  "*" + search[index:]
-
-	if len(search) == 0  && n.hasValue() {
-			return n.val, true
-	}
-
-	// Look for an edge
-	n = n.getEdge(search[0])
 	if n == nil {
-			return nil, false
-	}
-	
-	// Consume the search prefix
-	if strings.HasPrefix(search, n.prefix) {
-		search = search[len(n.prefix):]
-		return t.getWildCard(search, n)
-	} else {
-			return nil, false
+		return nil, false
 	}
 
+	if n.hasValue() {
+		return n.val, true
+	} else {
+		return nil, false
+	}
 }
 
 // walks the tree, returning true if s found
@@ -471,4 +452,3 @@ func (t *Trie) Walk(s string) bool {
 
 	return false
 }
-

@@ -84,7 +84,7 @@ func TestWildcard3(t *testing.T) {
 		call = false
 	}))
 
-	mux.Handle("/ap/socialinjustice/*", 
+	mux.Handle("/ap/socialinjustice/jane/*", 
 		nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
 		call = true
 	}))
@@ -94,7 +94,7 @@ func TestWildcard3(t *testing.T) {
 		call = false
 	}))
 
-	r, _ := http.NewRequest("GET", "/ap/socialinjustice/C", nil)
+	r, _ := http.NewRequest("GET", "/ap/socialinjustice/jane/delta", nil)
 	w := httptest.NewRecorder()
 	mux.ServeHTTP(w, r)
 
@@ -122,6 +122,11 @@ func TestWildcard4(t *testing.T) {
 
 	mux.Handle("/ap/socialinjustice/jane/*", 
 		nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		call = false
+	}))
+
+	mux.Handle("/ap/socialinjustice/*/delta", 
+		nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
 		call = true
 	}))
 
@@ -130,7 +135,7 @@ func TestWildcard4(t *testing.T) {
 		call = false
 	}))
 
-	r, _ := http.NewRequest("GET", "/ap/socialinjustice/jane/delta", nil)
+	r, _ := http.NewRequest("GET", "/ap/socialinjustice/november/delta", nil)
 	w := httptest.NewRecorder()
 	mux.ServeHTTP(w, r)
 
