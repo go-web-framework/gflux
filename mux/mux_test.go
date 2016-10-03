@@ -145,6 +145,38 @@ func TestWildcard4(t *testing.T) {
 
 }
 
+// Test found wildcard with different tree structure
+func TestWildcard5(t *testing.T) {
+	mux := New()
+	call := false
+	mux.Handle("/a/", nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		call = false
+	}))
+
+	mux.Handle("/ap/socialinjustice/*/delta", 
+		nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		call = false
+	}))
+
+	mux.Handle("/ap/socialinjustice/*/delta/*", 
+		nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		call = true
+	}))
+
+	mux.Handle("/ap/socialwarriors/avenged/", 
+		nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		call = false
+	}))
+
+	r, _ := http.NewRequest("GET", "/ap/socialinjustice/november/delta/nope", nil)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, r)
+
+	if !call {
+		t.Error("handler should be called")
+	}
+
+}
 
 // Test found wildcard at end of longer Url path
 func TestRoutes(t *testing.T) {

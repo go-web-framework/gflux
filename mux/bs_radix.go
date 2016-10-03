@@ -390,6 +390,7 @@ func (t *Trie) getWildCard(s string, n *node) (*Route, bool) {
 				return rNode.val, found
 			} else {
 				search = remains
+				n = rNode
 				continue
 			}
 		} else {
