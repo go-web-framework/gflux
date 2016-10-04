@@ -6,6 +6,8 @@ import (
 	"context"
 )
 
+const varKey int = 0
+
 var Stop = errors.New("exit request handling")
 
 // Middleware represents an HTTP middlware function.
@@ -43,9 +45,10 @@ func (m *Mux) ServeHTTP(w http.ResponseWriter, r *http.Request){
 		}
 	}
 	//currently arbitrary values
-	varValues := map[string]string{"Var1": "aaa", "2": "2"}
+	//varValues := map[string]string{"Var1": "aaa", "2": "2"}
+	varValues := "aaa"
 	ctx := r.Context()
-	ctx = context.WithValue(ctx, int32(0), varValues)
+	ctx = context.WithValue(ctx, varKey, varValues)
 	r = r.WithContext(ctx)
 
 	//method check?
@@ -68,5 +71,11 @@ func (m *Mux) HandleNotFound(rw http.ResponseWriter, req *http.Request) {
 
 func (m *Mux) AllowMethod(path string, method ...string){
 		m.radix.UpdateRouteMethods(path, method...)
+}
+
+//Vars
+func Vars(r *http.Request) string{
+	return r.Context().Value(varKey).(string)
+	//return r.Context().Value(varKey).(map[string]string)
 }
 
