@@ -3,7 +3,7 @@ package mux
 import (
 	"errors"
 	"net/http"
-	"context"
+	//"context"
 )
 
 const varKey int = 0
@@ -32,7 +32,7 @@ func (m *Mux) Handle(path string, mw []Middleware, h http.Handler) *Route{
 
 func (m *Mux) ServeHTTP(w http.ResponseWriter, r *http.Request){
 	//e, _ := m.tree.Get(r.URL.Path);
-	e, found := m.radix.Get(r.URL.Path);
+	e, found, _ := m.radix.Get(r.URL.Path);
 	if !found {
 			m.HandleNotFound(w, r)
 			return
@@ -46,10 +46,10 @@ func (m *Mux) ServeHTTP(w http.ResponseWriter, r *http.Request){
 	}
 	//currently arbitrary values
 	//varValues := map[string]string{"Var1": "aaa", "2": "2"}
-	varValues := "aaa"
-	ctx := r.Context()
-	ctx = context.WithValue(ctx, varKey, varValues)
-	r = r.WithContext(ctx)
+	//varValues := "aaa"
+	//ctx := r.Context()
+	//ctx = context.WithValue(ctx, varKey, varValues)
+	//r = r.WithContext(ctx)
 
 	//method check?
 	e.Handler.ServeHTTP(w, r)
@@ -73,9 +73,11 @@ func (m *Mux) AllowMethod(path string, method ...string){
 		m.radix.UpdateRouteMethods(path, method...)
 }
 
+/*
 //Vars
 func Vars(r *http.Request) string{
 	return r.Context().Value(varKey).(string)
 	//return r.Context().Value(varKey).(map[string]string)
 }
+*/
 

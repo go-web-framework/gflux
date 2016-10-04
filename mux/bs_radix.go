@@ -5,6 +5,7 @@ import (
 	"strings"
 	"net/http"
 	"errors"
+	"fmt"
 )
 
 type Route struct {
@@ -133,8 +134,9 @@ func (t *Trie) NewRoute(url string, h http.Handler, mid []Middleware, methods []
 }
 
 // NewRoute return a pointer to a Route instance and call save() on it
+// TODO: UpdateRouteMethods should only work with getLiteral
 func (t *Trie) UpdateRouteMethods(path string, method ...string) bool {
-	val, found := t.Get(path)
+	val, found, _ := t.Get(path)
 	if !found || val.Path != path {
 		return false
 	}
@@ -290,10 +292,12 @@ func (t *Trie) insert(r *Route) error {
 	return nil
 }
 
-func (t *Trie) Get(s string) (*Route, bool) {
+func (t *Trie) Get(s string) (*Route, bool, map[string]string,) {
 	if s == "/" {
-		return t.root.val, true
+		return t.root.val, true, nil
 	}
+
+
 
 	//if s does not end with a forward slash, append '/' to s
 	if len(s) != 0 && s[len(s) - 1] != '/' {
@@ -303,15 +307,16 @@ func (t *Trie) Get(s string) (*Route, bool) {
 	
 	n, found, remains := t.getLiteral(s, t.root)
 	if found {
-		return n.val, true
+		return n.val, true, nil
 	}
 
-	val, found2 := t.getWildCard(remains, n)
+	val, found2, mp := t.getWildCard(remains, n)
 	if found2 {
-		return val, true
+		fmt.Println("Replaced text: ", mp)
+		return val, true, mp
 	} 
 
-	return nil, false
+	return nil, false, nil
 }
 
 // Get is used to lookup a specific key, returning
@@ -357,29 +362,34 @@ func (t *Trie) getLiteral(s string, n *node) (*node, bool, string) {
 
 // Get is used to lookup a specific key, returning
 // the value and if it was found
-func (t *Trie) getWildCard(s string, n *node) (*Route, bool) {
+func (t *Trie) getWildCard(s string, n *node) (*Route, bool, map[string]string) {
 	if n == nil {
-		return nil, false
+		return nil, false, nil
 	}
 
 	var rNode *node
 	var remains string
 	found := false
 	search := s
+	m := make(map[string]string)
 
  	for len(search) != 0 && n != nil {
 	 	indexFirstSlash := strings.IndexByte(search, '/')
-
+	 	replacedText := search[:indexFirstSlash]
+	 	m[replacedText] = replacedText
 		search =  "*" + search[indexFirstSlash:]
 
+		
 		if len(search) == 0  && n.hasValue() {
-				return n.val, true
+				fmt.Println("1, ", replacedText)
+			//  n.val.Tokens = append(n.val.Tokens, replacedText)
+				return n.val, true, m
 		}
-
+		
 		// Look for an edge
 		n = n.getEdge(search[0])
 		if n == nil {
-				return nil, false
+				return nil, false, nil
 		}
 		
 		// Consume the search prefix
@@ -387,26 +397,29 @@ func (t *Trie) getWildCard(s string, n *node) (*Route, bool) {
 			search = search[len(n.prefix):]
 			rNode, found, remains = t.getLiteral(search, n)
 			if found {
-				return rNode.val, found
+				m[replacedText] = replacedText
+				fmt.Println("2, ", replacedText)
+				return rNode.val, found, m
 			} else {
 				search = remains
 				n = rNode
 				continue
 			}
 		} else {
-				return nil, false
+				return nil, false, nil
 		}
 
 	}
 
 	if n == nil {
-		return nil, false
+		return nil, false, nil
 	}
 
 	if n.hasValue() {
-		return n.val, true
+		// n.val.Tokens = append(n.val.Tokens, search)
+		return n.val, true, m
 	} else {
-		return nil, false
+		return nil, false, nil
 	}
 }
 

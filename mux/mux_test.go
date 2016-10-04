@@ -14,6 +14,8 @@ import (
 func TestWildcard1(t *testing.T) {
 	mux := New()
 	call := false
+
+	
 	mux.Handle("/*", nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
 		call = true
 	}))
