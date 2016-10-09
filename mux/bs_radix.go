@@ -122,15 +122,15 @@ func longestPrefix(k1, k2 string) int {
 }
 
 // NewRoute return a pointer to a Route instance and call save() on it
-func (t *Trie) NewRoute(url string, h http.Handler, mid []Middleware, methods []string) *Route {
+func (t *Trie) NewRoute(url string, h http.Handler, mid []Middleware, methods []string) (*Route, error) {
 	  r := &Route{
 		Path: url, 
 		Handler: h,
 		Middleware: mid,
 		Methods: methods,
 	}
-	t.insert(r)
-	return r
+	err := t.insert(r)
+	return r, err
 }
 
 // NewRoute return a pointer to a Route instance and call save() on it
@@ -144,6 +144,15 @@ func (t *Trie) UpdateRouteMethods(path string, method ...string) bool {
 	methods := []string{}
 	val.Methods = append(methods, method...)
 	return true
+}
+
+func isWildCardKey(s string) bool {
+	return s[0] == '{' && s[len(s) - 1] == '}'
+}
+
+func cleanWildCardKey(s string) string {
+	s = strings.TrimPrefix(s, "{")
+	return strings.TrimSuffix(s, "}")
 }
 
 // Insert is used to add a newentry or update
@@ -173,12 +182,13 @@ func (t *Trie) insert(r *Route) error {
 	query = strings.TrimPrefix(query, "/")
 	
 	for {
-		child = parent.getEdge(query[0])  //getEdge returns the child node
 		indexFirstSlash := strings.IndexByte(query, '/')
 		if indexFirstSlash < 0 {
 			return errors.New("managed to get a query with no forward slash")
 		}
 		
+		child = parent.getEdge(query[0])  //getEdge returns the child node
+
 		// No edge, create one
 		if child == nil {
 			if indexFirstSlash + 1 == len(query) { //we can just add the whole thing
@@ -239,6 +249,10 @@ func (t *Trie) insert(r *Route) error {
 		n = child;
 		commonPrefix := longestPrefix(query, n.prefix)
 		lastCommonIndex := commonPrefix - 1
+
+		if isWildCardKey(query[:indexFirstSlash]) && commonPrefix != len(n.prefix) {
+			return errors.New("attempting to add multiple wildcard keys at same level")
+		}
 		
 		// if commonPrefix == len(n.prefix), there's no need to split, just add
 		// an edge
@@ -297,8 +311,6 @@ func (t *Trie) Get(s string) (*Route, bool, map[string]string,) {
 		return t.root.val, true, nil
 	}
 
-
-
 	//if s does not end with a forward slash, append '/' to s
 	if len(s) != 0 && s[len(s) - 1] != '/' {
 		s = s + "/"
@@ -312,7 +324,7 @@ func (t *Trie) Get(s string) (*Route, bool, map[string]string,) {
 
 	val, found2, mp := t.getWildCard(remains, n)
 	if found2 {
-		fmt.Println("Replaced text: ", mp)
+		fmt.Println(mp)
 		return val, true, mp
 	} 
 
@@ -374,31 +386,41 @@ func (t *Trie) getWildCard(s string, n *node) (*Route, bool, map[string]string) 
 	m := make(map[string]string)
 
  	for len(search) != 0 && n != nil {
-	 	indexFirstSlash := strings.IndexByte(search, '/')
-	 	replacedText := search[:indexFirstSlash]
-	 	m[replacedText] = replacedText
-		search =  "*" + search[indexFirstSlash:]
-
-		
-		if len(search) == 0  && n.hasValue() {
-				fmt.Println("1, ", replacedText)
-			//  n.val.Tokens = append(n.val.Tokens, replacedText)
+ 		if len(search) == 0  && n.hasValue() {
 				return n.val, true, m
 		}
+
+	 	indexFirstSlash := strings.IndexByte(search, '/')
+	 	replacedText := search[:indexFirstSlash]
 		
-		// Look for an edge
-		n = n.getEdge(search[0])
-		if n == nil {
-				return nil, false, nil
-		}
-		
+	 	//look to see if there's an egde from
+	 	//the current node with a {
+	 	//if so, ensure the pointed to node is a wildcard key (should be)
+	 	//prepend the wildcard key to search[indexFirstSlash:]
+	 	//add the key and replaced text to the map
+	 	
+	 	n = n.getEdge('{')
+	 	if n == nil {
+	 		return nil, false, nil
+	 	}
+	 	
+	 	wcFirstSlash := strings.IndexByte(n.prefix, '/')
+
+	 	if indexFirstSlash < 0 || !isWildCardKey(n.prefix[:wcFirstSlash]) {
+	 		return nil, false, nil
+	 	}
+
+	 	wc := n.prefix[:wcFirstSlash]
+	 	wcKey := cleanWildCardKey(wc);
+		m[wcKey] = replacedText
+		search =  wc + search[indexFirstSlash:]
+	
 		// Consume the search prefix
 		if strings.HasPrefix(search, n.prefix) {
 			search = search[len(n.prefix):]
 			rNode, found, remains = t.getLiteral(search, n)
 			if found {
-				m[replacedText] = replacedText
-				fmt.Println("2, ", replacedText)
+				m[wcKey] = replacedText
 				return rNode.val, found, m
 			} else {
 				search = remains

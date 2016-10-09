@@ -27,7 +27,12 @@ func New() *Mux {
 
 func (m *Mux) Handle(path string, mw []Middleware, h http.Handler) *Route{
 	method := []string{"Get"}
-	return m.radix.NewRoute(path, h, mw, method)
+	r, err := m.radix.NewRoute(path, h, mw, method)
+	if err != nil {
+		return nil
+	} else {
+		return r
+	}
 }
 
 func (m *Mux) ServeHTTP(w http.ResponseWriter, r *http.Request){
