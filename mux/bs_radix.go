@@ -136,7 +136,7 @@ func (t *Trie) NewRoute(url string, h http.Handler, mid []Middleware, methods []
 // NewRoute return a pointer to a Route instance and call save() on it
 // TODO: UpdateRouteMethods should only work with getLiteral
 func (t *Trie) UpdateRouteMethods(path string, method ...string) bool {
-	val, found, _ := t.Get(path)
+	val, _, found := t.Get(path)
 	if !found || val.Path != path {
 		return false
 	}
@@ -306,29 +306,46 @@ func (t *Trie) insert(r *Route) error {
 	return nil
 }
 
-func (t *Trie) Get(s string) (*Route, bool, map[string]string,) {
+//assumes query is already formatted so that it does not contain a leading
+//forward slash but does end with forward slash
+func isValidQuery(s string) bool {
+	tokens := strings.Split(s, "/")
+	
+	for _, key := range tokens {
+		if key != "" && isWildCardKey(key) {
+			return false
+		}
+	}
+	
+	return true
+}
+
+func (t *Trie) Get(s string) (*Route, map[string]string, bool) {
 	if s == "/" {
-		return t.root.val, true, nil
+		return t.root.val, nil, true
 	}
 
 	//if s does not end with a forward slash, append '/' to s
 	if len(s) != 0 && s[len(s) - 1] != '/' {
 		s = s + "/"
 	}
-	s = strings.TrimPrefix(s, "/") 
+	s = strings.TrimPrefix(s, "/")
+	if !isValidQuery(s) {
+		return nil, nil, false
+	} 
 	
 	n, found, remains := t.getLiteral(s, t.root)
 	if found {
-		return n.val, true, nil
+		return n.val, nil, true
 	}
 
 	val, found2, mp := t.getWildCard(remains, n)
 	if found2 {
 		fmt.Println(mp)
-		return val, true, mp
+		return val, mp, true
 	} 
 
-	return nil, false, nil
+	return nil, nil, false
 }
 
 // Get is used to lookup a specific key, returning

@@ -37,7 +37,7 @@ func (m *Mux) Handle(path string, mw []Middleware, h http.Handler) *Route{
 
 func (m *Mux) ServeHTTP(w http.ResponseWriter, r *http.Request){
 	//e, _ := m.tree.Get(r.URL.Path);
-	e, found, _ := m.radix.Get(r.URL.Path);
+	e, _, found := m.radix.Get(r.URL.Path);
 	if !found {
 			m.HandleNotFound(w, r)
 			return
