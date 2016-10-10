@@ -326,7 +326,7 @@ func TestTreeStructure2(t *testing.T) {
 			call = true
 		}))
 
-	found := mux.radix.Walk("/a")
+	found := mux.trie.Walk("/a")
 
 	if !found {
 		t.Error("handler should be called")
