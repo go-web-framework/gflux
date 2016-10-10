@@ -1,0 +1,19 @@
+<html>
+<head>
+</head>
+<body>
+<!-- list of stuff -->
+{{range $key, $value := .PostList}}
+		{{printf "%s" $value.Author}}
+		</br>
+		{{printf "%s" $value.Text}}
+		</br>
+{{end}}
+<form action="/page/new/{{len .PostList}}" method="POST">
+<div>Author: <textarea name="author"></textarea></div>
+<div>Post: <textarea name="postValue"></textarea></div>
+<div><input type="hidden" value="{{len .PostList}}" name = "id"></div>
+<div><input type="submit" value="save"></div>
+</form> 
+</body>
+</html>
