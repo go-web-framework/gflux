@@ -345,13 +345,15 @@ func TestRouting8(t *testing.T) {
 		t.Error("route should not be nil")
 	}
 
-	route2 := mux.Handle("/a/{b}/c/d", nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+	defer func() {
+		if p := recover(); p == nil {
+			t.Error("route registration should panic")
+		}
+	}()
+
+	mux.Handle("/a/{b}/c/d", nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
 		call = false
 	}))
-
-	if route2 != nil {
-		t.Error("route should be nil")
-	}
 }
 
 // Test found wildcard with different tree structure
@@ -366,13 +368,15 @@ func TestRouting9(t *testing.T) {
 		t.Error("route should not be nil")
 	}
 
-	route2 := mux.Handle("/a/{a}/c/d", nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+	defer func() {
+		if p := recover(); p == nil {
+			t.Error("route registration should panic")
+		}
+	}()
+
+	mux.Handle("/a/{a}/c/d", nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
 		call = false
 	}))
-
-	if route2 != nil {
-		t.Error("route should be nil")
-	}
 }
 
 // Test found wildcard with different tree structure
