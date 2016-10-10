@@ -8,19 +8,16 @@ import (
 	"testing"
 )
 
-
-
 // Test found wildcard at end of Url path
-func TestWildcard1(t *testing.T) {
+func TestWildcard2(t *testing.T) {
 	mux := New()
 	call := false
 
-	
-	mux.Handle("/*", nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+	mux.Handle("/{a}/{b}/{c}", nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
 		call = true
 	}))
 
-	r, _ := http.NewRequest("GET", "/a", nil)
+	r, _ := http.NewRequest("GET", "/e/f/g", nil)
 	w := httptest.NewRecorder()
 	mux.ServeHTTP(w, r)
 
@@ -40,20 +37,20 @@ func TestWildcard3(t *testing.T) {
 		call = false
 	}))
 
-	mux.Handle("/ap/*", 
+	mux.Handle("/ap/{index}",
 		nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
-		call = false
-	}))
+			call = false
+		}))
 
-	mux.Handle("/ap/socialinjustice/jane/*", 
+	mux.Handle("/ap/socialinjustice/jane/{letter}",
 		nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
-		call = true
-	}))
+			call = true
+		}))
 
-	mux.Handle("/ap/socialwarriors/avenged/", 
+	mux.Handle("/ap/socialwarriors/avenged/",
 		nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
-		call = false
-	}))
+			call = false
+		}))
 
 	r, _ := http.NewRequest("GET", "/ap/socialinjustice/jane/delta", nil)
 	w := httptest.NewRecorder()
@@ -63,7 +60,6 @@ func TestWildcard3(t *testing.T) {
 		t.Error("handler should be called")
 	}
 }
-
 
 // Test found wildcard with different tree structure
 func TestWildcard4(t *testing.T) {
@@ -76,25 +72,25 @@ func TestWildcard4(t *testing.T) {
 		call = false
 	}))
 
-	mux.Handle("/ap/*", 
+	mux.Handle("/ap/{index}",
 		nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
-		call = false
-	}))
+			call = false
+		}))
 
-	mux.Handle("/ap/socialinjustice/jane/*", 
+	mux.Handle("/ap/socialinjustice/jane/{letter}",
 		nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
-		call = false
-	}))
+			call = false
+		}))
 
-	mux.Handle("/ap/socialinjustice/*/delta", 
+	mux.Handle("/ap/socialinjustice/{type}/delta",
 		nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
-		call = true
-	}))
+			call = true
+		}))
 
-	mux.Handle("/ap/socialwarriors/avenged/", 
+	mux.Handle("/ap/socialwarriors/avenged/",
 		nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
-		call = false
-	}))
+			call = false
+		}))
 
 	r, _ := http.NewRequest("GET", "/ap/socialinjustice/november/delta", nil)
 	w := httptest.NewRecorder()
@@ -114,20 +110,20 @@ func TestWildcard5(t *testing.T) {
 		call = false
 	}))
 
-	mux.Handle("/ap/socialinjustice/*/delta", 
+	mux.Handle("/ap/socialinjustice/{index}/delta",
 		nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
-		call = false
-	}))
+			call = false
+		}))
 
-	mux.Handle("/ap/socialinjustice/*/delta/*", 
+	mux.Handle("/ap/socialinjustice/{index}/delta/{month}",
 		nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
-		call = true
-	}))
+			call = true
+		}))
 
-	mux.Handle("/ap/socialwarriors/avenged/", 
+	mux.Handle("/ap/socialwarriors/avenged/",
 		nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
-		call = false
-	}))
+			call = false
+		}))
 
 	r, _ := http.NewRequest("GET", "/ap/socialinjustice/november/delta/nope", nil)
 	w := httptest.NewRecorder()
@@ -147,10 +143,10 @@ func TestRoutes(t *testing.T) {
 		call = false
 	}))
 
-	mux.Handle("/ag/a", 
+	mux.Handle("/ag/a",
 		nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
-		call = true
-	}))
+			call = true
+		}))
 
 	r, _ := http.NewRequest("GET", "/ag/a", nil)
 	w := httptest.NewRecorder()
@@ -169,10 +165,10 @@ func TestHome(t *testing.T) {
 		call = true
 	}))
 
-	mux.Handle("/ag/a", 
+	mux.Handle("/ag/a",
 		nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
-		call = false
-	}))
+			call = false
+		}))
 
 	r, _ := http.NewRequest("GET", "/", nil)
 	w := httptest.NewRecorder()
@@ -182,7 +178,6 @@ func TestHome(t *testing.T) {
 		t.Error("handler should be called")
 	}
 }
-
 
 // Test the custom not handler handler sets 404 error code
 func TestNotFoundCustomHandlerSends404(t *testing.T) {
@@ -248,8 +243,6 @@ func TestForwardSlashBehavior2(t *testing.T) {
 	}
 }
 
-
-
 // Test not found
 func TestNotFoundPathBeginning(t *testing.T) {
 	mux := New()
@@ -261,10 +254,10 @@ func TestNotFoundPathBeginning(t *testing.T) {
 		call = false
 	}))
 
-	mux.Handle("/a/c", 
+	mux.Handle("/a/c",
 		nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
-		call = true
-	}))
+			call = true
+		}))
 
 	r, _ := http.NewRequest("GET", "/d", nil)
 	w := httptest.NewRecorder()
@@ -286,10 +279,10 @@ func TestFoundPathBeginning(t *testing.T) {
 		call = false
 	}))
 
-	mux.Handle("/a/c", 
+	mux.Handle("/a/c",
 		nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
-		call = false
-	}))
+			call = false
+		}))
 
 	r, _ := http.NewRequest("GET", "/a", nil)
 	w := httptest.NewRecorder()
@@ -300,7 +293,6 @@ func TestFoundPathBeginning(t *testing.T) {
 	}
 }
 
-
 // Test found wildcard at end of longer Url path
 func TestTreeStructure(t *testing.T) {
 	mux := New()
@@ -309,20 +301,15 @@ func TestTreeStructure(t *testing.T) {
 		call = true
 	}))
 	mux.Handle("/B/b", nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
-		call = false
+		call = true
 	}))
 
-	mux.Handle("/a/*", 
-		nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
-		call = false
-	}))
-
-	r, _ := http.NewRequest("GET", "/a", nil)
+	r, _ := http.NewRequest("GET", "/B", nil)
 	w := httptest.NewRecorder()
 	mux.ServeHTTP(w, r)
 
-	if !call {
-		t.Error("handler should be called")
+	if call {
+		t.Error("handler should not be called")
 	}
 }
 
@@ -334,115 +321,73 @@ func TestTreeStructure2(t *testing.T) {
 		call = false
 	}))
 
-
-	mux.Handle("/ap", 
+	mux.Handle("/ap",
 		nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
-		call = true
-	}))
+			call = true
+		}))
 
-	found := mux.radix.Walk("/a")
+	found := mux.trie.Walk("/a")
 
-	if !found{
-		t.Error("handler should be called")
-	}
-}
-
-// Test if the route is valid; should not be found
-func TestRouting1(t *testing.T) {
-	mux := New()
-	call := false
-	mux.Handle("/a/", nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
-		call = true
-	}))
-
-	r, _ := http.NewRequest("GET", "/b/123", nil)
-	w := httptest.NewRecorder()
-	mux.ServeHTTP(w, r)
-
-	if call {
-		t.Error("handler should not be called")
-	}
-}
-
-// Test found wildcard with different tree structure
-func TestRouting5(t *testing.T) {
-	mux := New()
-	call := false
-	mux.Handle("/a/", nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
-		call = false
-	}))
-	mux.Handle("/B/b", nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
-		call = false
-	}))
-
-	mux.Handle("/ap/*", 
-		nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
-		call = false
-	}))
-
-	mux.Handle("/ap/socialinjustice/C", 
-		nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
-		call = true
-	}))
-
-	mux.Handle("/ap/socialwarriors/avenged/", 
-		nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
-		call = false
-	}))
-
-	r, _ := http.NewRequest("GET", "/ap/socialinjustice/C", nil)
-	w := httptest.NewRecorder()
-	mux.ServeHTTP(w, r)
-
-	if !call {
+	if !found {
 		t.Error("handler should be called")
 	}
 }
 
 // Test found wildcard with different tree structure
-func TestRouting6(t *testing.T) {
+func TestRouting8(t *testing.T) {
 	mux := New()
 	call := false
-	mux.Handle("/a/", nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
-		call = false
-	}))
-	mux.Handle("/ap/socialinjustice/C", 
-		nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
-		call = true
-	}))
-
-	mux.Handle("/ap/socialwarriors/avenged/", 
-		nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+	route := mux.Handle("/a/{b}/c/d", nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
 		call = false
 	}))
 
-	r, _ := http.NewRequest("GET", "/ap/socialinjustice/", nil)
-	w := httptest.NewRecorder()
-	mux.ServeHTTP(w, r)
-
-	if call {
-		t.Error("handler should not be called")
+	if route == nil {
+		t.Error("route should not be nil")
 	}
+
+	defer func() {
+		if p := recover(); p == nil {
+			t.Error("route registration should panic")
+		}
+	}()
+
+	mux.Handle("/a/{b}/c/d", nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		call = false
+	}))
 }
 
 // Test found wildcard with different tree structure
-func TestRouting7(t *testing.T) {
+func TestRouting9(t *testing.T) {
 	mux := New()
 	call := false
-	mux.Handle("/a/", nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+	route := mux.Handle("/a/{b}/c/d", nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
 		call = false
 	}))
-	mux.Handle("/ap/socialinjustice/C", 
-		nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+
+	if route == nil {
+		t.Error("route should not be nil")
+	}
+
+	defer func() {
+		if p := recover(); p == nil {
+			t.Error("route registration should panic")
+		}
+	}()
+
+	mux.Handle("/a/{a}/c/d", nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		call = false
+	}))
+}
+
+// Test found wildcard with different tree structure
+func TestDirectAccess(t *testing.T) {
+	mux := New()
+	call := false
+	mux.Handle("/a/{b}/c", nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
 		call = true
 	}))
 
-	mux.Handle("/ap/socialwarriors/avenged/", 
-		nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
-		call = false
-	}))
-
-	r, _ := http.NewRequest("GET", "/ap/social/", nil)
+	r, _ := http.NewRequest("GET", "/a/{b}/c", nil)
 	w := httptest.NewRecorder()
 	mux.ServeHTTP(w, r)
 

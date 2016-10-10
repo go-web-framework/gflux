@@ -1,19 +1,10 @@
 package mux
 
 import (
+	"errors"
 	"sort"
 	"strings"
-	"net/http"
-	"errors"
-	"fmt"
 )
-
-type Route struct {
-	Path       string
-	Middleware []Middleware
-	Handler    http.Handler
-	Methods    []string // Allowed HTTP methods.
-}
 
 // edge is used to represent an edge node
 type edge struct {
@@ -80,33 +71,33 @@ func (e edges) Sort() {
 }
 
 // Tree implements a radix tree. This can be treated as a
-// Dictionary abstract data type. The main advantage over
+// dictionary abstract data type. The main advantage over
 // a standard hash map is prefix-based lookups and
-// ordered iteration,
+// ordered iteration.
 type Trie struct {
-	root *node
-	size int
-	last_level *node;
+	root      *node
+	size      int
+	lastLevel *node
 }
 
-// New returns an empty Tree
+// New returns an empty Tree ready-for-use.
 func NewTrie() *Trie {
 	t := &Trie{
 		root: &node{
-			path: "",
+			path:     "",
 			isAnchor: true,
-			},
-		}
+		},
+	}
 	return t
 }
 
-// Len is used to return the number of elements in the tree
+// Len returns the number of elements in the tree.
 func (t *Trie) Len() int {
 	return t.size
 }
 
 // longestPrefix finds the length of the shared prefix
-// of two strings
+// of two strings.
 func longestPrefix(k1, k2 string) int {
 	max := len(k1)
 	if l := len(k2); l < max {
@@ -121,22 +112,10 @@ func longestPrefix(k1, k2 string) int {
 	return i
 }
 
-// NewRoute return a pointer to a Route instance and call save() on it
-func (t *Trie) NewRoute(url string, h http.Handler, mid []Middleware, methods []string) *Route {
-	  r := &Route{
-		Path: url, 
-		Handler: h,
-		Middleware: mid,
-		Methods: methods,
-	}
-	t.insert(r)
-	return r
-}
-
-// NewRoute return a pointer to a Route instance and call save() on it
 // TODO: UpdateRouteMethods should only work with getLiteral
+// TODO: unused in mux.
 func (t *Trie) UpdateRouteMethods(path string, method ...string) bool {
-	val, found, _ := t.Get(path)
+	val, _, found := t.Get(path)
 	if !found || val.Path != path {
 		return false
 	}
@@ -146,7 +125,16 @@ func (t *Trie) UpdateRouteMethods(path string, method ...string) bool {
 	return true
 }
 
-// Insert is used to add a newentry or update
+func isWildCardKey(s string) bool {
+	return s[0] == '{' && s[len(s)-1] == '}'
+}
+
+func cleanWildCardKey(s string) string {
+	s = strings.TrimPrefix(s, "{")
+	return strings.TrimSuffix(s, "}")
+}
+
+// Insert is used to add a new entry or update
 // an existing entry. Returns true if update successful.
 func (t *Trie) insert(r *Route) error {
 	toContinue := false
@@ -157,55 +145,56 @@ func (t *Trie) insert(r *Route) error {
 	var child *node
 
 	// update root controller to act as home controller
-	if query == "/" {		
+	if query == "/" {
 		if t.root.val == nil {
 			t.root.val = r
 			return nil
-		}	else {
+		} else {
 			return errors.New("Cannot insert; key already exists")
 		}
 	}
 
 	//make sure the query doesn't start with forward slash, but does end with one
-	if len(query) != 0 && query[len(query) - 1] != '/' {
+	if len(query) != 0 && query[len(query)-1] != '/' {
 		query = r.Path + "/"
-	}	
+	}
 	query = strings.TrimPrefix(query, "/")
-	
+
 	for {
-		child = parent.getEdge(query[0])  //getEdge returns the child node
 		indexFirstSlash := strings.IndexByte(query, '/')
 		if indexFirstSlash < 0 {
 			return errors.New("managed to get a query with no forward slash")
 		}
-		
+
+		child = parent.getEdge(query[0]) //getEdge returns the child node
+
 		// No edge, create one
 		if child == nil {
-			if indexFirstSlash + 1 == len(query) { //we can just add the whole thing
+			if indexFirstSlash+1 == len(query) { //we can just add the whole thing
 				e = edge{
 					label: query[0],
 					node: &node{
-						val: r,
-						prefix: query, 
+						val:      r,
+						prefix:   query,
 						isAnchor: true,
-						path: parent.path + query, 
+						path:     parent.path + query,
 					},
 				}
 				toContinue = false //the entire query was added to the new node, so we're done here
-		
+
 			} else {
 				//no edge, but forward slash in query (not at the end)
 				e = edge{
 					label: query[0],
 					node: &node{ //leave the value nil
-						prefix: query[:indexFirstSlash + 1], 
+						prefix:   query[:indexFirstSlash+1],
 						isAnchor: true,
-						path: parent.path + query[:indexFirstSlash + 1],
+						path:     parent.path + query[:indexFirstSlash+1],
 					},
 				}
 				toContinue = true
 			}
-			
+
 			//create a new edge pointing to a new node
 			//add that edge to the parents edge array
 			//increment tree size
@@ -214,14 +203,14 @@ func (t *Trie) insert(r *Route) error {
 			t.size++
 
 			if toContinue {
-				query = query[indexFirstSlash + 1:]
+				query = query[indexFirstSlash+1:]
 				parent = e.node
 				continue
 			} else {
 				break
-			}		
+			}
 		}
-		
+
 		// We found an edge where the label matches query[0]
 		// Determine longest prefix of the search key on match
 		// look at the child and its prefix
@@ -235,11 +224,15 @@ func (t *Trie) insert(r *Route) error {
 		// nodes should only have a value if they're at the end
 		//commonPrefix should never be greater than indexFirstSlash, as all nodes end on a slash if they have one
 		//commonPrefix is not the index; last common character is commonPrefix - 1
-				
-		n = child;
+
+		n = child
 		commonPrefix := longestPrefix(query, n.prefix)
 		lastCommonIndex := commonPrefix - 1
-		
+
+		if isWildCardKey(query[:indexFirstSlash]) && commonPrefix != len(n.prefix) {
+			return errors.New("attempting to add multiple wildcard keys at same level")
+		}
+
 		// if commonPrefix == len(n.prefix), there's no need to split, just add
 		// an edge
 
@@ -249,87 +242,102 @@ func (t *Trie) insert(r *Route) error {
 			continue
 		}
 		switch {
-		case lastCommonIndex < indexFirstSlash && commonPrefix > 0: 
+		case lastCommonIndex < indexFirstSlash && commonPrefix > 0:
 			//split n's prefix at commonPrefix, making everything not common a child node. Then start insert again at n. there will no longer be a commonality
-			child1_prefix := n.prefix[commonPrefix :]
+			child1_prefix := n.prefix[commonPrefix:]
 
 			//need to create a new edge pointing to a new node with the common prefix
 			//add that edge to n
 			edge1 := edge{
-					label: child1_prefix[0],
-					node: &node{
-						prefix: child1_prefix,
-						val: n.val,  //the child needs to take the parents Route
-						isAnchor: false,
-						path: n.path + child1_prefix,
-						edges: n.edges,
-					},
-				}
+				label: child1_prefix[0],
+				node: &node{
+					prefix:   child1_prefix,
+					val:      n.val, //the child needs to take the parents Route
+					isAnchor: false,
+					path:     n.path + child1_prefix,
+					edges:    n.edges,
+				},
+			}
 			//update the prefix and val of n
 			n.val = nil
-			n.prefix = n.prefix[: commonPrefix ]
+			n.prefix = n.prefix[:commonPrefix]
 			n.edges = nil
 			n.addEdge(edge1)
 			t.size++
 			parent = n
-			query = query[commonPrefix  :]
+			query = query[commonPrefix:]
 			continue
 		case lastCommonIndex == indexFirstSlash && commonPrefix < len(n.prefix):
 			//change query to everything after the commonality, and start search from n
 			parent = n
-			query = query[commonPrefix :]
+			query = query[commonPrefix:]
 			continue
-		case lastCommonIndex == indexFirstSlash  && commonPrefix == len(n.prefix):
+		case lastCommonIndex == indexFirstSlash && commonPrefix == len(n.prefix):
 			parent = n
-			query = query[commonPrefix :]
+			query = query[commonPrefix:]
 			continue
-			//the node we're attempting to insert already exists. throw an error
+			// TODO(?): the node we're attempting to insert already exists,
+			// return an error.
 		default:
 			break
-		}	
+		}
 		break
 	}
 	return nil
 }
 
-func (t *Trie) Get(s string) (*Route, bool, map[string]string,) {
-	if s == "/" {
-		return t.root.val, true, nil
+// assumes query is already formatted so that it does not contain a leading
+// forward slash but does end with forward slash
+func isValidQuery(s string) bool {
+	tokens := strings.Split(s, "/")
+
+	for _, key := range tokens {
+		if key != "" && isWildCardKey(key) {
+			return false
+		}
 	}
 
+	return true
+}
 
+// Get returns the route, the wilcard values, and
+// whether a match was found for the supplied path.
+func (t *Trie) Get(s string) (*Route, map[string]string, bool) {
+	if s == "/" {
+		return t.root.val, nil, true
+	}
 
-	//if s does not end with a forward slash, append '/' to s
-	if len(s) != 0 && s[len(s) - 1] != '/' {
+	// If s does not end with a forward slash, append '/' to s.
+	if len(s) != 0 && s[len(s)-1] != '/' {
 		s = s + "/"
 	}
-	s = strings.TrimPrefix(s, "/") 
-	
+	s = strings.TrimPrefix(s, "/")
+	if !isValidQuery(s) {
+		return nil, nil, false
+	}
+
 	n, found, remains := t.getLiteral(s, t.root)
 	if found {
-		return n.val, true, nil
+		return n.val, nil, true
 	}
 
 	val, found2, mp := t.getWildCard(remains, n)
 	if found2 {
-		fmt.Println("Replaced text: ", mp)
-		return val, true, mp
-	} 
+		return val, mp, true
+	}
 
-	return nil, false, nil
+	return nil, nil, false
 }
 
-// Get is used to lookup a specific key, returning
-// the value and if it was found
 func (t *Trie) getLiteral(s string, n *node) (*node, bool, string) {
 	var child *node
-	
+
 	search := s
 	retNode := n
 	remaining := search
 
 	for {
-		t.last_level = n;
+		t.lastLevel = n
 		// Check for key exhaution
 		if len(search) == 0 {
 			if n.hasValue() {
@@ -346,18 +354,18 @@ func (t *Trie) getLiteral(s string, n *node) (*node, bool, string) {
 		n = child
 		// Consume the search prefix
 		if strings.HasPrefix(search, n.prefix) {
-				search = search[len(n.prefix):]
-				if n.isAnchor {
-					retNode = n
-					remaining = search
-				}
+			search = search[len(n.prefix):]
+			if n.isAnchor {
+				retNode = n
+				remaining = search
+			}
 		} else {
 			break
 		}
 	}
 
 	return retNode, false, remaining
-		
+
 }
 
 // Get is used to lookup a specific key, returning
@@ -373,32 +381,42 @@ func (t *Trie) getWildCard(s string, n *node) (*Route, bool, map[string]string) 
 	search := s
 	m := make(map[string]string)
 
- 	for len(search) != 0 && n != nil {
-	 	indexFirstSlash := strings.IndexByte(search, '/')
-	 	replacedText := search[:indexFirstSlash]
-	 	m[replacedText] = replacedText
-		search =  "*" + search[indexFirstSlash:]
+	for len(search) != 0 && n != nil {
+		if len(search) == 0 && n.hasValue() {
+			return n.val, true, m
+		}
 
-		
-		if len(search) == 0  && n.hasValue() {
-				fmt.Println("1, ", replacedText)
-			//  n.val.Tokens = append(n.val.Tokens, replacedText)
-				return n.val, true, m
-		}
-		
-		// Look for an edge
-		n = n.getEdge(search[0])
+		indexFirstSlash := strings.IndexByte(search, '/')
+		replacedText := search[:indexFirstSlash]
+
+		//look to see if there's an egde from
+		//the current node with a {
+		//if so, ensure the pointed to node is a wildcard key (should be)
+		//prepend the wildcard key to search[indexFirstSlash:]
+		//add the key and replaced text to the map
+
+		n = n.getEdge('{')
 		if n == nil {
-				return nil, false, nil
+			return nil, false, nil
 		}
-		
+
+		wcFirstSlash := strings.IndexByte(n.prefix, '/')
+
+		if indexFirstSlash < 0 || !isWildCardKey(n.prefix[:wcFirstSlash]) {
+			return nil, false, nil
+		}
+
+		wc := n.prefix[:wcFirstSlash]
+		wcKey := cleanWildCardKey(wc)
+		m[wcKey] = replacedText
+		search = wc + search[indexFirstSlash:]
+
 		// Consume the search prefix
 		if strings.HasPrefix(search, n.prefix) {
 			search = search[len(n.prefix):]
 			rNode, found, remains = t.getLiteral(search, n)
 			if found {
-				m[replacedText] = replacedText
-				fmt.Println("2, ", replacedText)
+				m[wcKey] = replacedText
 				return rNode.val, found, m
 			} else {
 				search = remains
@@ -406,7 +424,7 @@ func (t *Trie) getWildCard(s string, n *node) (*Route, bool, map[string]string) 
 				continue
 			}
 		} else {
-				return nil, false, nil
+			return nil, false, nil
 		}
 
 	}
@@ -433,15 +451,15 @@ func (t *Trie) Walk(s string) bool {
 	}
 
 	//if s does not end with a forward slash, append '/' to s
-	if len(s) != 0 && s[len(s) - 1] != '/' {
+	if len(s) != 0 && s[len(s)-1] != '/' {
 		s = s + "/"
 	}
-	s = strings.TrimPrefix(s, "/") 
+	s = strings.TrimPrefix(s, "/")
 
 	search := s
 
 	for {
-		t.last_level = n;
+		t.lastLevel = n
 		// Check for key exhaution
 		if len(search) == 0 {
 			if n.hasValue() {
@@ -458,7 +476,7 @@ func (t *Trie) Walk(s string) bool {
 		n = child
 		// Consume the search prefix
 		if strings.HasPrefix(search, n.prefix) {
-				search = search[len(n.prefix):]
+			search = search[len(n.prefix):]
 		} else {
 			break
 		}
