@@ -27,13 +27,13 @@ func main() {
 	})
 	
 	// get item from database
-	product := db.Get(&product, "Code", "L1212")
+	product := db.Get("Code", "L1212")
 	
 	// update the obtained item
-	db.Update(&product, "Price", 2000)
+	db.Update(product, "Price", 2000)
 	
 	// delete an item
-	db.Delete(&Product)
+	db.Delete(product)
 }
 	
 	
