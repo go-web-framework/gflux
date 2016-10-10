@@ -15,7 +15,7 @@ type Middleware func(w http.ResponseWriter, r *http.Request) error
 
 // Mux is a serve mux.
 type Mux struct {
-	radix *Trie
+	radix    *Trie
 	notFound http.Handler
 }
 
@@ -25,7 +25,7 @@ func New() *Mux {
 	}
 }
 
-func (m *Mux) Handle(path string, mw []Middleware, h http.Handler) *Route{
+func (m *Mux) Handle(path string, mw []Middleware, h http.Handler) *Route {
 	method := []string{"Get"}
 	r, err := m.radix.NewRoute(path, h, mw, method)
 	if err != nil {
@@ -35,18 +35,18 @@ func (m *Mux) Handle(path string, mw []Middleware, h http.Handler) *Route{
 	}
 }
 
-func (m *Mux) ServeHTTP(w http.ResponseWriter, r *http.Request){
+func (m *Mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	//e, _ := m.tree.Get(r.URL.Path);
-	e, _, found := m.radix.Get(r.URL.Path);
+	e, _, found := m.radix.Get(r.URL.Path)
 	if !found {
-			m.HandleNotFound(w, r)
-			return
+		m.HandleNotFound(w, r)
+		return
 	}
 
-	for _, middleware := range e.Middleware{
+	for _, middleware := range e.Middleware {
 		err := middleware(w, r)
-		if (err != nil){ //err == Stop
-  		//middleware error
+		if err != nil { //err == Stop
+			//middleware error
 		}
 	}
 	//currently arbitrary values
@@ -62,7 +62,7 @@ func (m *Mux) ServeHTTP(w http.ResponseWriter, r *http.Request){
 
 // NotFound the mux custom 404 handler
 func (m *Mux) SetNotFound(handler http.Handler) {
-		m.notFound = handler
+	m.notFound = handler
 }
 
 // HandleNotFound handle when a request does not match a registered handler.
@@ -74,8 +74,8 @@ func (m *Mux) HandleNotFound(rw http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (m *Mux) AllowMethod(path string, method ...string){
-		m.radix.UpdateRouteMethods(path, method...)
+func (m *Mux) AllowMethod(path string, method ...string) {
+	m.radix.UpdateRouteMethods(path, method...)
 }
 
 /*
@@ -85,4 +85,3 @@ func Vars(r *http.Request) string{
 	//return r.Context().Value(varKey).(map[string]string)
 }
 */
-

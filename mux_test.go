@@ -3,8 +3,8 @@
 package main
 
 import (
-	"net/http"
 	"./mux"
+	"net/http"
 	"net/http/httptest"
 	"testing"
 )
@@ -52,7 +52,7 @@ func TestWildcard2(t *testing.T) {
 		call = false
 	}))
 
-	mux.Handle("/ap/*", 
+	mux.Handle("/ap/*",
 		nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
 		call = true
 	}))
@@ -75,7 +75,7 @@ func TestRoutes(t *testing.T) {
 		call = false
 	}))
 
-	mux.Handle("/ag/a", 
+	mux.Handle("/ag/a",
 		nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
 		call = true
 	}))
@@ -91,10 +91,6 @@ func TestRoutes(t *testing.T) {
 
 
 */
-
-
-
-
 
 // Test the custom not handler handler sets 404 error code
 func TestNotFoundCustomHandlerSends404(t *testing.T) {
@@ -160,8 +156,6 @@ func TestForwardSlashBehavior2(t *testing.T) {
 	}
 }
 
-
-
 // Test not found
 func TestNotFoundPathBeginning(t *testing.T) {
 	mux := mux.New()
@@ -173,10 +167,10 @@ func TestNotFoundPathBeginning(t *testing.T) {
 		call = false
 	}))
 
-	mux.Handle("/a/c", 
+	mux.Handle("/a/c",
 		nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
-		call = true
-	}))
+			call = true
+		}))
 
 	r, _ := http.NewRequest("GET", "/d", nil)
 	w := httptest.NewRecorder()
@@ -198,10 +192,10 @@ func TestFoundPathBeginning(t *testing.T) {
 		call = false
 	}))
 
-	mux.Handle("/a/c", 
+	mux.Handle("/a/c",
 		nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
-		call = false
-	}))
+			call = false
+		}))
 
 	r, _ := http.NewRequest("GET", "/a", nil)
 	w := httptest.NewRecorder()
@@ -211,7 +205,6 @@ func TestFoundPathBeginning(t *testing.T) {
 		t.Error("handler should be called")
 	}
 }
-
 
 // Test found wildcard at end of longer Url path
 func TestTreeStructure(t *testing.T) {
@@ -224,10 +217,10 @@ func TestTreeStructure(t *testing.T) {
 		call = false
 	}))
 
-	mux.Handle("/a/*", 
+	mux.Handle("/a/*",
 		nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
-		call = false
-	}))
+			call = false
+		}))
 
 	r, _ := http.NewRequest("GET", "/a", nil)
 	w := httptest.NewRecorder()
@@ -249,10 +242,10 @@ func TestTreeStructure2(t *testing.T) {
 		call = false
 	}))
 
-	mux.Handle("/a/*", 
+	mux.Handle("/a/*",
 		nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
-		call = true
-	}))
+			call = true
+		}))
 
 	r, _ := http.NewRequest("GET", "/a/*", nil)
 	w := httptest.NewRecorder()
@@ -305,16 +298,15 @@ func TestRouting3(t *testing.T) {
 		call = true
 	}))
 
-	mux.Handle("/aardvark/", 
+	mux.Handle("/aardvark/",
 		nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
-		call = true
-	}))
+			call = true
+		}))
 
-	mux.Handle("/aardvark/anteater", 
+	mux.Handle("/aardvark/anteater",
 		nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
-		call = true
-	}))
-
+			call = true
+		}))
 
 	r, _ := http.NewRequest("GET", "/aardvark", nil)
 	w := httptest.NewRecorder()
@@ -333,10 +325,10 @@ func TestRouting4(t *testing.T) {
 		call = true
 	}))
 
-	mux.Handle("/and", 
+	mux.Handle("/and",
 		nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
-		call = true
-	}))
+			call = true
+		}))
 
 	r, _ := http.NewRequest("GET", "/and", nil)
 	w := httptest.NewRecorder()

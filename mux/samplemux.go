@@ -1,4 +1,5 @@
 package mux
+
 /*
 import (
 	"errors"
@@ -72,7 +73,7 @@ func (m *Mux) Handle(path string, mw []Middleware, h http.Handler) *Entry {
 	}
 	for _, pathVal := range pathArray{
 		strings.Join(insertPath, "/")
-		if (pathVal[0] == ":"){		
+		if (pathVal[0] == ":"){
 			strings.Join(insertPath, urlVar)
 		}
 		else{

@@ -1,12 +1,12 @@
 package main
 
 import (
+	"./mux" // TODO: change this to github.com/go-web-framework/gflux/mux to allow 'go install' and 'go get'
 	"fmt"
 	"net/http"
-	"./mux" // TODO: change this to github.com/go-web-framework/gflux/mux to allow 'go install' and 'go get'
 )
 
-func main(){
+func main() {
 	testMux := mux.New()
 	testHandler1 := testHandler{}
 	testHandler2 := homeHandler{}
@@ -16,33 +16,33 @@ func main(){
 	testMux.SetNotFound(testHandler3)
 	fmt.Println("Listening on :8080")
 	http.ListenAndServe(":8080", testMux)
-	
+
 }
 
-type testHandler struct{
+type testHandler struct {
 }
 
-func (t testHandler) ServeHTTP(w http.ResponseWriter, r *http.Request){
+func (t testHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	//myVars := r.Context().Value(int32(0)).(map[string]string)
-	a := mux.Vars(r);
+	a := mux.Vars(r)
 	//a := myVars["Var1"]
 	//b := myVars["2"]
 	fmt.Fprintf(w, "<h1>Test %s</h1>", a)
 	return
 }
 
-type homeHandler struct{
+type homeHandler struct {
 }
 
-func (t homeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request){
+func (t homeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "<h1>Home</h1>")
 	return
 }
 
-type handler404 struct{
+type handler404 struct {
 }
 
-func (t handler404) ServeHTTP(w http.ResponseWriter, r *http.Request){
+func (t handler404) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "<h1>You've reached a custom 404!</h1>")
 	return
 }
