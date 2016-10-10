@@ -2,18 +2,9 @@ package mux
 
 import (
 	"errors"
-	"fmt"
-	"net/http"
 	"sort"
 	"strings"
 )
-
-type Route struct {
-	Path       string
-	Middleware []Middleware
-	Handler    http.Handler
-	Methods    []string // Allowed HTTP methods.
-}
 
 // edge is used to represent an edge node
 type edge struct {
@@ -80,16 +71,16 @@ func (e edges) Sort() {
 }
 
 // Tree implements a radix tree. This can be treated as a
-// Dictionary abstract data type. The main advantage over
+// dictionary abstract data type. The main advantage over
 // a standard hash map is prefix-based lookups and
-// ordered iteration,
+// ordered iteration.
 type Trie struct {
-	root       *node
-	size       int
-	last_level *node
+	root      *node
+	size      int
+	lastLevel *node
 }
 
-// New returns an empty Tree
+// New returns an empty Tree ready-for-use.
 func NewTrie() *Trie {
 	t := &Trie{
 		root: &node{
@@ -100,13 +91,13 @@ func NewTrie() *Trie {
 	return t
 }
 
-// Len is used to return the number of elements in the tree
+// Len returns the number of elements in the tree.
 func (t *Trie) Len() int {
 	return t.size
 }
 
 // longestPrefix finds the length of the shared prefix
-// of two strings
+// of two strings.
 func longestPrefix(k1, k2 string) int {
 	max := len(k1)
 	if l := len(k2); l < max {
@@ -121,20 +112,8 @@ func longestPrefix(k1, k2 string) int {
 	return i
 }
 
-// NewRoute return a pointer to a Route instance and call save() on it
-func (t *Trie) NewRoute(url string, h http.Handler, mid []Middleware, methods []string) (*Route, error) {
-	r := &Route{
-		Path:       url,
-		Handler:    h,
-		Middleware: mid,
-		Methods:    methods,
-	}
-	err := t.insert(r)
-	return r, err
-}
-
-// NewRoute return a pointer to a Route instance and call save() on it
 // TODO: UpdateRouteMethods should only work with getLiteral
+// TODO: unused in mux.
 func (t *Trie) UpdateRouteMethods(path string, method ...string) bool {
 	val, _, found := t.Get(path)
 	if !found || val.Path != path {
@@ -155,7 +134,7 @@ func cleanWildCardKey(s string) string {
 	return strings.TrimSuffix(s, "}")
 }
 
-// Insert is used to add a newentry or update
+// Insert is used to add a new entry or update
 // an existing entry. Returns true if update successful.
 func (t *Trie) insert(r *Route) error {
 	toContinue := false
@@ -297,7 +276,8 @@ func (t *Trie) insert(r *Route) error {
 			parent = n
 			query = query[commonPrefix:]
 			continue
-			//the node we're attempting to insert already exists. throw an error
+			// TODO(?): the node we're attempting to insert already exists,
+			// return an error.
 		default:
 			break
 		}
@@ -306,8 +286,8 @@ func (t *Trie) insert(r *Route) error {
 	return nil
 }
 
-//assumes query is already formatted so that it does not contain a leading
-//forward slash but does end with forward slash
+// assumes query is already formatted so that it does not contain a leading
+// forward slash but does end with forward slash
 func isValidQuery(s string) bool {
 	tokens := strings.Split(s, "/")
 
@@ -320,12 +300,14 @@ func isValidQuery(s string) bool {
 	return true
 }
 
+// Get returns the route, the wilcard values, and
+// whether a match was found for the supplied path.
 func (t *Trie) Get(s string) (*Route, map[string]string, bool) {
 	if s == "/" {
 		return t.root.val, nil, true
 	}
 
-	//if s does not end with a forward slash, append '/' to s
+	// If s does not end with a forward slash, append '/' to s.
 	if len(s) != 0 && s[len(s)-1] != '/' {
 		s = s + "/"
 	}
@@ -341,15 +323,12 @@ func (t *Trie) Get(s string) (*Route, map[string]string, bool) {
 
 	val, found2, mp := t.getWildCard(remains, n)
 	if found2 {
-		fmt.Println(mp)
 		return val, mp, true
 	}
 
 	return nil, nil, false
 }
 
-// Get is used to lookup a specific key, returning
-// the value and if it was found
 func (t *Trie) getLiteral(s string, n *node) (*node, bool, string) {
 	var child *node
 
@@ -358,7 +337,7 @@ func (t *Trie) getLiteral(s string, n *node) (*node, bool, string) {
 	remaining := search
 
 	for {
-		t.last_level = n
+		t.lastLevel = n
 		// Check for key exhaution
 		if len(search) == 0 {
 			if n.hasValue() {
@@ -480,7 +459,7 @@ func (t *Trie) Walk(s string) bool {
 	search := s
 
 	for {
-		t.last_level = n
+		t.lastLevel = n
 		// Check for key exhaution
 		if len(search) == 0 {
 			if n.hasValue() {

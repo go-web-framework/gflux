@@ -3,41 +3,98 @@ package mux
 import (
 	"errors"
 	"net/http"
-	//"context"
 )
 
-const varKey int = 0
+type key int
+
+const paramsCtxKey key = 0
 
 var Stop = errors.New("exit request handling")
 
-// Middleware represents an HTTP middlware function.
+// Middleware represents an HTTP middleware function.
 type Middleware func(w http.ResponseWriter, r *http.Request) error
 
-// Mux is a serve mux.
+type Route struct {
+	Path       string
+	Middleware []Middleware
+	Handler    http.Handler
+
+	// Methods is the list of allowed HTTP methods.
+	// If len(Methods) == 0, all HTTP methods are allowed.
+	Methods []string
+}
+
 type Mux struct {
-	radix    *Trie
+	trie     *Trie
 	notFound http.Handler
 }
 
 func New() *Mux {
 	return &Mux{
-		radix: NewTrie(),
+		trie: NewTrie(),
 	}
 }
 
 func (m *Mux) Handle(path string, mw []Middleware, h http.Handler) *Route {
-	method := []string{"Get"}
-	r, err := m.radix.NewRoute(path, h, mw, method)
-	if err != nil {
-		return nil
-	} else {
-		return r
+	r := &Route{
+		Path:       path,
+		Middleware: mw,
+		Handler:    h,
 	}
+	if err := m.trie.insert(r); err != nil {
+		panic(err)
+	}
+	return r
+}
+
+func (m *Mux) GET(path string, mw []Middleware, h http.Handler) *Route {
+	return m.Handle(path, mw, h).Allow("GET")
+}
+
+func (m *Mux) POST(path string, mw []Middleware, h http.Handler) *Route {
+	return m.Handle(path, mw, h).Allow("POST")
+}
+
+func (m *Mux) PUT(path string, mw []Middleware, h http.Handler) *Route {
+	return m.Handle(path, mw, h).Allow("PUT")
+}
+
+func (m *Mux) DELETE(path string, mw []Middleware, h http.Handler) *Route {
+	return m.Handle(path, mw, h).Allow("DELETE")
+}
+
+func (m *Mux) HEAD(path string, mw []Middleware, h http.Handler) *Route {
+	return m.Handle(path, mw, h).Allow("HEAD")
+}
+
+func (r *Route) Allow(methods ...string) *Route {
+	r.Methods = append(r.Methods, difference(r.Methods, methods)...)
+	return r
+}
+
+// difference returns the strings in a that aren't in b.
+func difference(a, b []string) []string {
+	var ret []string
+
+	m := make(map[string]bool, len(b))
+	for _, s := range b {
+		m[s] = true
+	}
+
+	for _, s := range a {
+		if m[s] {
+			continue
+		}
+		ret = append(ret, s)
+	}
+
+	return ret
 }
 
 func (m *Mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	//e, _ := m.tree.Get(r.URL.Path);
-	e, _, found := m.radix.Get(r.URL.Path)
+	// TODO
+
+	e, _, found := m.trie.Get(r.URL.Path)
 	if !found {
 		m.HandleNotFound(w, r)
 		return
@@ -49,7 +106,7 @@ func (m *Mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			//middleware error
 		}
 	}
-	//currently arbitrary values
+
 	//varValues := map[string]string{"Var1": "aaa", "2": "2"}
 	//varValues := "aaa"
 	//ctx := r.Context()
@@ -72,10 +129,6 @@ func (m *Mux) HandleNotFound(rw http.ResponseWriter, req *http.Request) {
 	} else {
 		http.NotFound(rw, req)
 	}
-}
-
-func (m *Mux) AllowMethod(path string, method ...string) {
-	m.radix.UpdateRouteMethods(path, method...)
 }
 
 /*

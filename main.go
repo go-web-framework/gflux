@@ -1,9 +1,10 @@
 package main
 
 import (
-	"./mux" // TODO: change this to github.com/go-web-framework/gflux/mux to allow 'go install' and 'go get'
 	"fmt"
 	"net/http"
+
+	"github.com/go-web-framework/gflux/mux"
 )
 
 func main() {
@@ -24,10 +25,10 @@ type testHandler struct {
 
 func (t testHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	//myVars := r.Context().Value(int32(0)).(map[string]string)
-	a := mux.Vars(r)
+	// a := mux.Vars(r)
 	//a := myVars["Var1"]
 	//b := myVars["2"]
-	fmt.Fprintf(w, "<h1>Test %s</h1>", a)
+	// fmt.Fprintf(w, "<h1>Test %s</h1>", a)
 	return
 }
 
