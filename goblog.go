@@ -23,14 +23,15 @@ var templates = template.Must(template.ParseFiles("goblog.html", "page.html"))
 func main(){
 
 	// open database
-	db, err := gorm.Open("mysql", "goblog:password@tcp(127.0.0.1:3306)/goblog")
+	var err error
+	db, err = gorm.Open("mysql", "goblog:password@tcp(127.0.0.1:3306)/goblog")
 	if err != nil {
 		panic("failed to connect database")
 	}
 	defer db.Close()
 	
 	// Migrate the schema
- 	db.AutoMigrate(&Post{})
+ 	//db.AutoMigrate(&Post{})
   
 	testMux := mux.New()
 	homeHandler := homeHandler{}
@@ -88,10 +89,10 @@ func (t newHandler) ServeHTTP(w http.ResponseWriter, r *http.Request){
 	if (author == ""){
 		author = "anon"
 	}
-	text := r.FormValue("text")
+	text := r.FormValue("Text")
 	
 	//store post
-	var post = Post{author:author, text:text}
+	var post = Post{Author:author, Text:text}
 	db.Create(&post)
 	
 	http.Redirect(w, r, "/home", http.StatusFound)
@@ -105,9 +106,9 @@ type goBlog struct{
 
 type Post struct{
 	gorm.Model
-	author string
-	text string
-	post_id int
+	Author string
+	Text string
+	Post_id int
 }
 
 type handler404 struct{
