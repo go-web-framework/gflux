@@ -4,14 +4,14 @@ import (
 	"fmt"
 	"net/http"
 	"html/template"
-	"database/sql"
+	"github.com/jinzhu/gorm"
 	_ "github.com/go-sql-driver/mysql"
 	"strconv"
 	"strings"
-	"./mux" // TODO: change this to github.com/go-web-framework/gflux/mux to allow 'go install' and 'go get'
+	"github.com/go-web-framework/gflux/mux"
 )
 
-var db *sql.DB
+var db *gorm.DB
 
 var templates = template.Must(template.ParseFiles("goblog.html", "page.html"))
 
@@ -19,7 +19,8 @@ var templates = template.Must(template.ParseFiles("goblog.html", "page.html"))
 //author: varchar(30)
 //text: varchar(200)
 func main(){
-	db, _ = sql.Open("mysql", "goblog:password@tcp(127.0.0.1:3306)/goblog")
+	db, _ = gorm.Open("mysql", "goblog:password@tcp(127.0.0.1:3306)/goblog")
+	//defer db.Close()
 	testMux := mux.New()
 	homeHandler := homeHandler{}
 	pageHandler := pageHandler{}
@@ -37,17 +38,10 @@ type homeHandler struct{
 }
 
 func (t homeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request){
-		//make database call
-		rows, err := db.Query("SELECT * from posts")
-		postList := make([]Post, 10)
-		for rows.Next(){
-		var id int
-		var author string
-		var text string
-		err = rows.Scan(&id, &author, &text)
-		postList = append(postList, Post{ID: id, Author: author, Text: text})
-	}
-	 err = templates.ExecuteTemplate(w, "goblog.html", &goBlog{PostList: postList})
+	//make database call
+	var postList []Post
+	db.Find(&postList)
+	err := templates.ExecuteTemplate(w, "goblog.html", &goBlog{PostList: postList})
     if err != nil {
         http.Error(w, err.Error(), http.StatusInternalServerError)
     }
@@ -65,19 +59,9 @@ func (t pageHandler) ServeHTTP(w http.ResponseWriter, r *http.Request){
 	if (err != nil){
 		idURL = 0
 	}
-	rows, err := db.Query("SELECT * FROM posts WHERE post_id = ?", idURL)
-	if (err != nil){
-		fmt.Fprintf(w, "<h1>No such post</h1>")
-		return
-	}
-	//hack, will only be one
-	var id int
-	var author string
-	var text string
-	for rows.Next(){
-		err = rows.Scan(&id, &author, &text)
-	}
-	post := Post{Author: author, Text: text, ID: id}
+
+	var post Post
+	db.Where("ID = ?", idURL).First(&post)
 	err = templates.ExecuteTemplate(w, "page.html", &post)
     if err != nil {
         http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -93,16 +77,12 @@ func (t newHandler) ServeHTTP(w http.ResponseWriter, r *http.Request){
 	if (author == ""){
 		author = "anon"
 	}
-	//latest in database more secure	
-	//idText := r.FormValue("id")
-	//postNum, err := strconv.Atoi(idText)
 	text := r.FormValue("text")
+	
 	//store post
-	stmt, err := db.Prepare("INSERT posts SET author=?,text=?")
-	_, err = stmt.Exec(author, text)
-	if (err != nil){
-		panic(err);
-	}
+	var post = Post{Author:author, Text:text}
+	db.Create(&post)
+	
 	http.Redirect(w, r, "/home", http.StatusFound)
 }
 
