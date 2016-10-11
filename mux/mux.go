@@ -1,6 +1,7 @@
 package mux
 
 import (
+	"context"
 	"errors"
 	"net/http"
 )
@@ -15,18 +16,18 @@ var Stop = errors.New("exit request handling")
 type Middleware func(w http.ResponseWriter, r *http.Request) error
 
 type Route struct {
-	Path       string
-	Middleware []Middleware
-	Handler    http.Handler
+	path       string
+	middleware []Middleware
+	handler    http.Handler
 
-	// Methods is the list of allowed HTTP methods.
+	// methods is the list of allowed HTTP methods.
 	// If len(Methods) == 0, all HTTP methods are allowed.
-	Methods []string
+	methods []string
 }
 
 type Mux struct {
 	trie     *Trie
-	notFound http.Handler
+	NotFound http.Handler
 }
 
 func New() *Mux {
@@ -35,106 +36,89 @@ func New() *Mux {
 	}
 }
 
-func (m *Mux) Handle(path string, mw []Middleware, h http.Handler) *Route {
+func (m *Mux) handle(path string, mw []Middleware, h http.Handler, methods []string) *Route {
 	r := &Route{
-		Path:       path,
-		Middleware: mw,
-		Handler:    h,
+		path:       path,
+		middleware: mw,
+		handler:    h,
+		methods:    methods,
 	}
+	// TODO: insert currently returns an error if r.path already exists.
+	// Instead, it should return an error only if same r.path
+	// with at least one of the same HTTP methods already exists.
 	if err := m.trie.insert(r); err != nil {
 		panic(err)
 	}
 	return r
 }
 
+func (m *Mux) Handle(path string, mw []Middleware, h http.Handler) *Route {
+	return m.handle(path, mw, h, nil)
+}
+
 func (m *Mux) GET(path string, mw []Middleware, h http.Handler) *Route {
-	return m.Handle(path, mw, h).Allow("GET")
+	return m.handle(path, mw, h, []string{"GET"})
 }
 
 func (m *Mux) POST(path string, mw []Middleware, h http.Handler) *Route {
-	return m.Handle(path, mw, h).Allow("POST")
+	return m.handle(path, mw, h, []string{"POST"})
 }
 
 func (m *Mux) PUT(path string, mw []Middleware, h http.Handler) *Route {
-	return m.Handle(path, mw, h).Allow("PUT")
+	return m.handle(path, mw, h, []string{"PUT"})
+}
+
+func (m *Mux) PATCH(path string, mw []Middleware, h http.Handler) *Route {
+	return m.handle(path, mw, h, []string{"PATCH"})
 }
 
 func (m *Mux) DELETE(path string, mw []Middleware, h http.Handler) *Route {
-	return m.Handle(path, mw, h).Allow("DELETE")
+	return m.handle(path, mw, h, []string{"DELETE"})
 }
 
 func (m *Mux) HEAD(path string, mw []Middleware, h http.Handler) *Route {
-	return m.Handle(path, mw, h).Allow("HEAD")
+	return m.handle(path, mw, h, []string{"HEAD"})
 }
 
-func (r *Route) Allow(methods ...string) *Route {
-	r.Methods = append(r.Methods, difference(r.Methods, methods)...)
-	return r
+func (m *Mux) OPTIONS(path string, mw []Middleware, h http.Handler) *Route {
+	return m.handle(path, mw, h, []string{"OPTIONS"})
 }
 
-// difference returns the strings in a that aren't in b.
-func difference(a, b []string) []string {
-	var ret []string
+type Params map[string]string
 
-	m := make(map[string]bool, len(b))
-	for _, s := range b {
-		m[s] = true
-	}
+func GetParams(c context.Context) Params {
+	return c.Value(paramsCtxKey).(Params)
+}
 
-	for _, s := range a {
-		if m[s] {
-			continue
+func SetParams(c context.Context, p Params) {
+	c = context.WithValue(c, paramsCtxKey, p)
+}
+
+func run(w http.ResponseWriter, r *http.Request, mw []Middleware, h http.Handler) {
+	for _, m := range mw {
+		if m != nil {
+			if m(w, r) == Stop {
+				return
+			}
 		}
-		ret = append(ret, s)
 	}
-
-	return ret
+	if h != nil {
+		h.ServeHTTP(w, r)
+	}
 }
 
 func (m *Mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	// TODO
+	route, p, found := m.trie.Get(r.URL.Path)
 
-	e, _, found := m.trie.Get(r.URL.Path)
-	if !found {
-		m.HandleNotFound(w, r)
+	if found {
+		SetParams(r.Context(), Params(p))
+		run(w, r, route.middleware, route.handler)
 		return
 	}
 
-	for _, middleware := range e.Middleware {
-		err := middleware(w, r)
-		if err != nil { //err == Stop
-			//middleware error
-		}
-	}
-
-	//varValues := map[string]string{"Var1": "aaa", "2": "2"}
-	//varValues := "aaa"
-	//ctx := r.Context()
-	//ctx = context.WithValue(ctx, varKey, varValues)
-	//r = r.WithContext(ctx)
-
-	//method check?
-	e.Handler.ServeHTTP(w, r)
-}
-
-// NotFound the mux custom 404 handler
-func (m *Mux) SetNotFound(handler http.Handler) {
-	m.notFound = handler
-}
-
-// HandleNotFound handle when a request does not match a registered handler.
-func (m *Mux) HandleNotFound(rw http.ResponseWriter, req *http.Request) {
-	if m.notFound != nil {
-		m.notFound.ServeHTTP(rw, req)
+	if m.NotFound != nil {
+		m.NotFound.ServeHTTP(w, r)
 	} else {
-		http.NotFound(rw, req)
+		http.NotFound(w, r)
 	}
 }
-
-/*
-//Vars
-func Vars(r *http.Request) string{
-	return r.Context().Value(varKey).(string)
-	//return r.Context().Value(varKey).(map[string]string)
-}
-*/

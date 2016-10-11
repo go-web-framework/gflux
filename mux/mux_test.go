@@ -182,10 +182,10 @@ func TestHome(t *testing.T) {
 // Test the custom not handler handler sets 404 error code
 func TestNotFoundCustomHandlerSends404(t *testing.T) {
 	mux := New()
-	mux.SetNotFound(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+	mux.NotFound = http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		rw.WriteHeader(404)
 		rw.Write([]byte("You've reached a custom 404!"))
-	}))
+	})
 
 	r, _ := http.NewRequest("GET", "/b/123", nil)
 	w := httptest.NewRecorder()

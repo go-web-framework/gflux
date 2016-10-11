@@ -116,12 +116,12 @@ func longestPrefix(k1, k2 string) int {
 // TODO: unused in mux.
 func (t *Trie) UpdateRouteMethods(path string, method ...string) bool {
 	val, _, found := t.Get(path)
-	if !found || val.Path != path {
+	if !found || val.path != path {
 		return false
 	}
 
 	methods := []string{}
-	val.Methods = append(methods, method...)
+	val.methods = append(methods, method...)
 	return true
 }
 
@@ -140,7 +140,7 @@ func (t *Trie) insert(r *Route) error {
 	toContinue := false
 	n := t.root
 	parent := t.root
-	query := r.Path
+	query := r.path
 	var e edge
 	var child *node
 
@@ -156,7 +156,7 @@ func (t *Trie) insert(r *Route) error {
 
 	//make sure the query doesn't start with forward slash, but does end with one
 	if len(query) != 0 && query[len(query)-1] != '/' {
-		query = r.Path + "/"
+		query = r.path + "/"
 	}
 	query = strings.TrimPrefix(query, "/")
 
