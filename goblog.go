@@ -26,8 +26,7 @@ func main(){
 	testHandler3 := handler404{}
 	testMux.Handle("/home", nil, homeHandler)
 	testMux.Handle("/page/*", nil, pageHandler)
-	testMux.Handle("/page/new/*", nil, pageHandler)
-	testMux.AllowMethod("/page/new/*", "Post")
+	testMux.Handle("/page/new/*", nil, pageHandler).Allow("Post")
 	testMux.SetNotFound(testHandler3)
 	fmt.Println("Listening on :8080")
 	http.ListenAndServe(":8080", testMux)
