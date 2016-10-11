@@ -15,12 +15,23 @@ var db *gorm.DB
 
 var templates = template.Must(template.ParseFiles("goblog.html", "page.html"))
 
-//postid: int
-//author: varchar(30)
-//text: varchar(200)
+// table posts (
+//   post_id: int
+//   author: varchar(30)
+//   text: varchar(200)
+// )
 func main(){
-	db, _ = gorm.Open("mysql", "goblog:password@tcp(127.0.0.1:3306)/goblog")
-	//defer db.Close()
+
+	// open database
+	db, err := gorm.Open("mysql", "goblog:password@tcp(127.0.0.1:3306)/goblog")
+	if err != nil {
+		panic("failed to connect database")
+	}
+	defer db.Close()
+	
+	// Migrate the schema
+ 	db.AutoMigrate(&Post{})
+  
 	testMux := mux.New()
 	homeHandler := homeHandler{}
 	pageHandler := pageHandler{}
@@ -61,7 +72,7 @@ func (t pageHandler) ServeHTTP(w http.ResponseWriter, r *http.Request){
 	}
 
 	var post Post
-	db.Where("ID = ?", idURL).First(&post)
+	db.Where("post_id = ?", idURL).First(&post)
 	err = templates.ExecuteTemplate(w, "page.html", &post)
     if err != nil {
         http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -80,7 +91,7 @@ func (t newHandler) ServeHTTP(w http.ResponseWriter, r *http.Request){
 	text := r.FormValue("text")
 	
 	//store post
-	var post = Post{Author:author, Text:text}
+	var post = Post{author:author, text:text}
 	db.Create(&post)
 	
 	http.Redirect(w, r, "/home", http.StatusFound)
@@ -93,9 +104,10 @@ type goBlog struct{
 }
 
 type Post struct{
-	Author string
-	Text string
-	ID int
+	gorm.Model
+	author string
+	text string
+	post_id int
 }
 
 type handler404 struct{
