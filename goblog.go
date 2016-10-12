@@ -7,8 +7,8 @@ import (
 	"github.com/jinzhu/gorm"
 	_ "github.com/go-sql-driver/mysql"
 	"strconv"
-	"strings"
-	"github.com/go-web-framework/gflux/mux"
+	//"github.com/go-web-framework/gflux/mux"
+	"./mux"
 )
 
 var db *gorm.DB
@@ -16,31 +16,32 @@ var db *gorm.DB
 var templates = template.Must(template.ParseFiles("goblog.html", "page.html"))
 
 // table posts (
-//   post_id: int
-//   author: varchar(30)
-//   text: varchar(200)
+//   Post_id: int (autoincrement)
+//   Author: varchar(30)
+//   Aext: varchar(200)
 // )
 func main(){
 
 	// open database
 	var err error
-	db, err = gorm.Open("mysql", "goblog:password@tcp(127.0.0.1:3306)/goblog")
+	db, err = gorm.Open("mysql", "goblog:password@tcp(127.0.0.1:3306)/goblog?parseTime=true")
 	if err != nil {
 		panic("failed to connect database")
 	}
 	defer db.Close()
-	
+	db.CreateTable(&Post{})
 	// Migrate the schema
- 	//db.AutoMigrate(&Post{})
+ 	db.AutoMigrate(&Post{})
+	//clear
+	db.Delete(Post{})
   
 	testMux := mux.New()
 	homeHandler := homeHandler{}
 	pageHandler := pageHandler{}
-	testHandler3 := handler404{}
-	testMux.Handle("/home", nil, homeHandler)
-	testMux.Handle("/page/*", nil, pageHandler)
-	testMux.Handle("/page/new/*", nil, pageHandler).Allow("Post")
-	testMux.SetNotFound(testHandler3)
+	newHandler := newHandler{}
+	testMux.GET("/home", nil, homeHandler)
+	testMux.GET("/page/{id}", nil, pageHandler)
+	testMux.POST("/page/new", nil, newHandler)
 	fmt.Println("Listening on :8080")
 	http.ListenAndServe(":8080", testMux)
 	
@@ -65,15 +66,19 @@ type pageHandler struct{
 
 func (t pageHandler) ServeHTTP(w http.ResponseWriter, r *http.Request){
 	//database call
-	url := r.URL.Path
+	/*url := r.URL.Path
 	urls := strings.Split(url, "/")
 	idURL, err := strconv.Atoi(urls[len(urls)-1])
 	if (err != nil){
 		idURL = 0
+	}*/
+	params := mux.GetParams(r)
+	idURL, err := strconv.Atoi(params["id"])
+	if (err != nil){
+		idURL = 0
 	}
-
 	var post Post
-	db.Where("post_id = ?", idURL).First(&post)
+	db.Where("Post_id = ?", idURL).First(&post)
 	err = templates.ExecuteTemplate(w, "page.html", &post)
     if err != nil {
         http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -90,9 +95,10 @@ func (t newHandler) ServeHTTP(w http.ResponseWriter, r *http.Request){
 		author = "anon"
 	}
 	text := r.FormValue("Text")
-	
+	var postList []Post
+	db.Find(&postList)
 	//store post
-	var post = Post{Author:author, Text:text}
+	var post = Post{Post_id: len(postList), Author:author, Text:text}
 	db.Create(&post)
 	
 	http.Redirect(w, r, "/home", http.StatusFound)
@@ -106,9 +112,10 @@ type goBlog struct{
 
 type Post struct{
 	gorm.Model
-	Author string
-	Text string
-	Post_id int
+	Post_id 	int 	`gorm:""primary_key"`
+	Author 		string `gorm:"type:varchar(20)"`
+	Text 			string	`gorm:"type:varchar(200)"`
+	
 }
 
 type handler404 struct{

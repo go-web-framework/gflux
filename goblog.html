@@ -4,15 +4,16 @@
 <body>
 <!-- list of stuff -->
 {{range $key, $value := .PostList}}
+		{{printf "%d" $value.Post_id}}
+		</br>
 		{{printf "%s" $value.Author}}
 		</br>
 		{{printf "%s" $value.Text}}
 		</br>
 {{end}}
-<form action="/page/new/{{len .PostList}}" method="POST">
-<div>Author: <textarea name="author"></textarea></div>
-<div>Post: <textarea name="postValue"></textarea></div>
-<div><input type="hidden" value="{{len .PostList}}" name = "id"></div>
+<form action="/page/new" method="POST">
+<div>Author: <textarea name="Author"></textarea></div>
+<div>Post: <textarea name="Text"></textarea></div>
 <div><input type="submit" value="save"></div>
 </form> 
 </body>

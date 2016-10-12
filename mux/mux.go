@@ -86,12 +86,15 @@ func (m *Mux) OPTIONS(path string, mw []Middleware, h http.Handler) *Route {
 
 type Params map[string]string
 
-func GetParams(c context.Context) Params {
-	return c.Value(paramsCtxKey).(Params)
+func GetParams(r *http.Request) Params {
+	return r.Context().Value(paramsCtxKey).(Params)
 }
 
-func SetParams(c context.Context, p Params) {
+func SetParams(r *http.Request, p Params) *http.Request {
+	c := r.Context()
 	c = context.WithValue(c, paramsCtxKey, p)
+	r = r.WithContext(c) 
+	return r
 }
 
 func run(w http.ResponseWriter, r *http.Request, mw []Middleware, h http.Handler) {
@@ -109,9 +112,8 @@ func run(w http.ResponseWriter, r *http.Request, mw []Middleware, h http.Handler
 
 func (m *Mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	route, p, found := m.trie.Get(r.URL.Path)
-
 	if found {
-		SetParams(r.Context(), Params(p))
+		r = SetParams(r, Params(p))
 		run(w, r, route.middleware, route.handler)
 		return
 	}
