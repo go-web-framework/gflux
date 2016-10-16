@@ -4,6 +4,21 @@ import (
 	"errors"
 	"sort"
 	"strings"
+	"net/http"
+	//"fmt"
+)
+
+const (
+		MethodAll 	  = "ALL"
+        MethodGet     = "GET"
+        MethodHead    = "HEAD"
+        MethodPost    = "POST"
+        MethodPut     = "PUT"
+        MethodPatch   = "PATCH" // RFC 5789
+        MethodDelete  = "DELETE"
+        MethodConnect = "CONNECT"
+        MethodOptions = "OPTIONS"
+        MethodTrace   = "TRACE"
 )
 
 // edge is used to represent an edge node
@@ -112,19 +127,6 @@ func longestPrefix(k1, k2 string) int {
 	return i
 }
 
-// TODO: UpdateRouteMethods should only work with getLiteral
-// TODO: unused in mux.
-func (t *Trie) UpdateRouteMethods(path string, method ...string) bool {
-	val, _, found := t.Get(path)
-	if !found || val.path != path {
-		return false
-	}
-
-	methods := []string{}
-	val.methods = append(methods, method...)
-	return true
-}
-
 func isWildCardKey(s string) bool {
 	return s[0] == '{' && s[len(s)-1] == '}'
 }
@@ -133,6 +135,28 @@ func cleanWildCardKey(s string) string {
 	s = strings.TrimPrefix(s, "{")
 	return strings.TrimSuffix(s, "}")
 }
+
+func newMethodMap(r *Route) {
+	r.handlers = make(map[string]http.Handler)
+	r.handlers[r.method] = r.handler
+}
+
+func appendMethodMap(r *Route, n *node) bool {
+
+
+	if _, ok := n.val.handlers[MethodAll]; ok {
+		return false //cannot append - ALL methods are already allowed
+	}
+
+	if _, ok := n.val.handlers[r.method]; ok {
+		return false //cannot append - the method aleady exists
+	}
+
+	n.val.handlers[r.method] = r.handler
+
+	return true
+}
+
 
 // Insert is used to add a new entry or update
 // an existing entry. Returns true if update successful.
@@ -147,6 +171,7 @@ func (t *Trie) insert(r *Route) error {
 	// update root controller to act as home controller
 	if query == "/" {
 		if t.root.val == nil {
+			newMethodMap(r)
 			t.root.val = r
 			return nil
 		} else {
@@ -161,6 +186,15 @@ func (t *Trie) insert(r *Route) error {
 	query = strings.TrimPrefix(query, "/")
 
 	for {
+		
+		if len(query) == 0{
+			if appendMethodMap(r, n) {
+				return nil
+			} else {
+				return errors.New("Could not append to existing key")
+			}
+		}
+		
 		indexFirstSlash := strings.IndexByte(query, '/')
 		if indexFirstSlash < 0 {
 			return errors.New("managed to get a query with no forward slash")
@@ -171,6 +205,7 @@ func (t *Trie) insert(r *Route) error {
 		// No edge, create one
 		if child == nil {
 			if indexFirstSlash+1 == len(query) { //we can just add the whole thing
+				newMethodMap(r)
 				e = edge{
 					label: query[0],
 					node: &node{
@@ -302,7 +337,7 @@ func isValidQuery(s string) bool {
 
 // Get returns the route, the wilcard values, and
 // whether a match was found for the supplied path.
-func (t *Trie) Get(s string) (*Route, map[string]string, bool) {
+func (t *Trie) Get(s string, method string) (*Route, map[string]string, bool) {
 	if s == "/" {
 		return t.root.val, nil, true
 	}
@@ -316,12 +351,19 @@ func (t *Trie) Get(s string) (*Route, map[string]string, bool) {
 		return nil, nil, false
 	}
 
-	n, found, remains := t.getLiteral(s, t.root)
+	n, found, remains := t.getLiteral(s, method, t.root)
 	if found {
 		return n.val, nil, true
 	}
 
-	val, found2, mp := t.getWildCard(remains, n)
+	// added now that the path might exist but doesn't
+	// have the correct method
+	if remains == "" {
+		return nil, nil, false
+	}
+
+	val, found2, mp := t.getWildCard(remains, method, n)
+	
 	if found2 {
 		return val, mp, true
 	}
@@ -329,7 +371,24 @@ func (t *Trie) Get(s string) (*Route, map[string]string, bool) {
 	return nil, nil, false
 }
 
-func (t *Trie) getLiteral(s string, n *node) (*node, bool, string) {
+func (n *node) hasMethodHandler(method string) bool{
+
+	if handl, ok := n.val.handlers[MethodAll]; ok {
+		n.val.method = MethodAll
+		n.val.handler = handl
+		return true
+	}
+
+	if handl, ok := n.val.handlers[method]; ok {
+		n.val.method = method
+		n.val.handler = handl
+		return true
+	}
+
+	return false
+}
+
+func (t *Trie) getLiteral(s string, method string, n *node) (*node, bool, string) {
 	var child *node
 
 	search := s
@@ -340,7 +399,7 @@ func (t *Trie) getLiteral(s string, n *node) (*node, bool, string) {
 		t.lastLevel = n
 		// Check for key exhaution
 		if len(search) == 0 {
-			if n.hasValue() {
+			if n.hasValue() && n.hasMethodHandler(method) {
 				return n, true, ""
 			}
 			break
@@ -370,7 +429,7 @@ func (t *Trie) getLiteral(s string, n *node) (*node, bool, string) {
 
 // Get is used to lookup a specific key, returning
 // the value and if it was found
-func (t *Trie) getWildCard(s string, n *node) (*Route, bool, map[string]string) {
+func (t *Trie) getWildCard(s string, method string, n *node) (*Route, bool, map[string]string) {
 	if n == nil {
 		return nil, false, nil
 	}
@@ -382,7 +441,7 @@ func (t *Trie) getWildCard(s string, n *node) (*Route, bool, map[string]string) 
 	m := make(map[string]string)
 
 	for len(search) != 0 && n != nil {
-		if len(search) == 0 && n.hasValue() {
+		if len(search) == 0 && n.hasValue()  && n.hasMethodHandler(method) {
 			return n.val, true, m
 		}
 
@@ -414,7 +473,7 @@ func (t *Trie) getWildCard(s string, n *node) (*Route, bool, map[string]string) 
 		// Consume the search prefix
 		if strings.HasPrefix(search, n.prefix) {
 			search = search[len(n.prefix):]
-			rNode, found, remains = t.getLiteral(search, n)
+			rNode, found, remains = t.getLiteral(search, method, n)
 			if found {
 				m[wcKey] = replacedText
 				return rNode.val, found, m
@@ -433,7 +492,7 @@ func (t *Trie) getWildCard(s string, n *node) (*Route, bool, map[string]string) 
 		return nil, false, nil
 	}
 
-	if n.hasValue() {
+	if n.hasValue()  && n.hasMethodHandler(method) {
 		// n.val.Tokens = append(n.val.Tokens, search)
 		return n.val, true, m
 	} else {

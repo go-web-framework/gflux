@@ -22,7 +22,8 @@ type Route struct {
 
 	// methods is the list of allowed HTTP methods.
 	// If len(Methods) == 0, all HTTP methods are allowed.
-	methods []string
+	handlers map[string]http.Handler
+	method string
 }
 
 type Mux struct {
@@ -36,12 +37,12 @@ func New() *Mux {
 	}
 }
 
-func (m *Mux) handle(path string, mw []Middleware, h http.Handler, methods []string) *Route {
+func (m *Mux) handle(path string, mw []Middleware, h http.Handler, method string) *Route {
 	r := &Route{
 		path:       path,
 		middleware: mw,
 		handler:    h,
-		methods:    methods,
+		method: method,
 	}
 	// TODO: insert currently returns an error if r.path already exists.
 	// Instead, it should return an error only if same r.path
@@ -53,35 +54,35 @@ func (m *Mux) handle(path string, mw []Middleware, h http.Handler, methods []str
 }
 
 func (m *Mux) Handle(path string, mw []Middleware, h http.Handler) *Route {
-	return m.handle(path, mw, h, nil)
+	return m.handle(path, mw, h, MethodAll)
 }
 
 func (m *Mux) GET(path string, mw []Middleware, h http.Handler) *Route {
-	return m.handle(path, mw, h, []string{"GET"})
+	return m.handle(path, mw, h, MethodGet)
 }
 
 func (m *Mux) POST(path string, mw []Middleware, h http.Handler) *Route {
-	return m.handle(path, mw, h, []string{"POST"})
+	return m.handle(path, mw, h, MethodPost)
 }
 
 func (m *Mux) PUT(path string, mw []Middleware, h http.Handler) *Route {
-	return m.handle(path, mw, h, []string{"PUT"})
+	return m.handle(path, mw, h,  MethodPut)
 }
 
 func (m *Mux) PATCH(path string, mw []Middleware, h http.Handler) *Route {
-	return m.handle(path, mw, h, []string{"PATCH"})
+	return m.handle(path, mw, h, MethodPatch)
 }
 
 func (m *Mux) DELETE(path string, mw []Middleware, h http.Handler) *Route {
-	return m.handle(path, mw, h, []string{"DELETE"})
+	return m.handle(path, mw, h, MethodDelete)
 }
 
 func (m *Mux) HEAD(path string, mw []Middleware, h http.Handler) *Route {
-	return m.handle(path, mw, h, []string{"HEAD"})
+	return m.handle(path, mw, h, MethodHead)
 }
 
 func (m *Mux) OPTIONS(path string, mw []Middleware, h http.Handler) *Route {
-	return m.handle(path, mw, h, []string{"OPTIONS"})
+	return m.handle(path, mw, h, MethodOptions)
 }
 
 type Params map[string]string
@@ -111,7 +112,7 @@ func run(w http.ResponseWriter, r *http.Request, mw []Middleware, h http.Handler
 }
 
 func (m *Mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	route, p, found := m.trie.Get(r.URL.Path)
+	route, p, found := m.trie.Get(r.URL.Path, r.Method)
 	if found {
 		r = SetParams(r, Params(p))
 		run(w, r, route.middleware, route.handler)
