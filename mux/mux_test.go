@@ -8,13 +8,35 @@ import (
 	"testing"
 )
 
+//assumes request is accessed for GetParams
+func checkParams(r *http.Request ,keys []string ,expected []string ) (bool, string){
+	if (len(keys) != len(expected)){
+		return false, "Length keys and answers do not match"
+	}
+	nullKey := "Key null: "
+	wrongVal := "Wrong value: "
+	params := GetParams(r);
+	for i := 0; i < len(keys); i++ {
+		a := params[keys[i]]
+		if (a == ""){
+			return false, nullKey + keys[i]
+		}
+		if (a != expected[i]){
+			return false, wrongVal + keys[i] + " " + expected[i]
+		}
+	}
+	return true, ""
+}
+
 // Wildcards as every fragment of the path
 func TestWildcard2(t *testing.T) {
 	mux := New()
 	call := false
-
-	mux.Handle("/{a}/{b}/{c}", nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+	paramCheck := false
+	errStr := ""
+	mux.Handle("/{a}/{b}/{c}", nil, http.HandlerFunc(func(w http.ResponseWriter,r2 *http.Request) {
 		call = true
+		paramCheck, errStr = checkParams(r2, []string{"a", "b", "c"}, []string{"e", "f", "g"})
 	}))
 
 	r, _ := http.NewRequest("POST", "/e/f/g", nil)
@@ -24,12 +46,17 @@ func TestWildcard2(t *testing.T) {
 	if !call {
 		t.Error("handler should be called")
 	}
+	if !paramCheck{
+		t.Error(errStr)
+	}
 }
 
 // Wildcards in various places
 func TestWildcard3(t *testing.T) {
 	mux := New()
 	call := false
+	paramCheck := false
+	errStr := ""
 	mux.Handle("/a/", nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
 		call = false
 	}))
@@ -43,8 +70,9 @@ func TestWildcard3(t *testing.T) {
 		}))
 
 	mux.Handle("/ap/socialinjustice/jane/{letter}",
-		nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		nil, http.HandlerFunc(func(w http.ResponseWriter, r2 *http.Request) {
 			call = true
+			paramCheck, errStr = checkParams(r2, []string{"letter"}, []string{"delta"})
 		}))
 
 	mux.Handle("/ap/socialwarriors/avenged/",
@@ -59,12 +87,17 @@ func TestWildcard3(t *testing.T) {
 	if !call {
 		t.Error("handler should be called")
 	}
+	if !paramCheck{
+		t.Error(errStr)
+	}
 }
 
 // Wildcards in various places
 func TestWildcard4(t *testing.T) {
 	mux := New()
 	call := false
+	paramCheck := false
+	errStr := ""
 	mux.Handle("/a/", nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
 		call = false
 	}))
@@ -83,8 +116,9 @@ func TestWildcard4(t *testing.T) {
 		}))
 
 	mux.Handle("/ap/socialinjustice/{type}/delta",
-		nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		nil, http.HandlerFunc(func(w http.ResponseWriter, r2 *http.Request) {
 			call = true
+			paramCheck, errStr = checkParams(r2, []string{"type"}, []string{"november"})
 		}))
 
 	mux.Handle("/ap/socialwarriors/avenged/",
@@ -99,6 +133,9 @@ func TestWildcard4(t *testing.T) {
 	if !call {
 		t.Error("handler should be called")
 	}
+	if !paramCheck{
+		t.Error(errStr)
+	}
 
 }
 
@@ -106,6 +143,8 @@ func TestWildcard4(t *testing.T) {
 func TestWildcard5(t *testing.T) {
 	mux := New()
 	call := false
+	paramCheck := false
+	errStr := ""
 	mux.Handle("/a/", nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
 		call = false
 	}))
@@ -116,8 +155,9 @@ func TestWildcard5(t *testing.T) {
 		}))
 
 	mux.Handle("/ap/socialinjustice/{index}/delta/{month}",
-		nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		nil, http.HandlerFunc(func(w http.ResponseWriter, r2 *http.Request) {
 			call = true
+			paramCheck, errStr = checkParams(r2, []string{"index", "month"}, []string{"november", "nope"})
 		}))
 
 	mux.Handle("/ap/socialwarriors/avenged/",
@@ -132,7 +172,9 @@ func TestWildcard5(t *testing.T) {
 	if !call {
 		t.Error("handler should be called")
 	}
-
+	if !paramCheck{
+		t.Error(errStr)
+	}
 }
 
 // Test found wildcard at end of longer Url path
@@ -492,6 +534,8 @@ func TestMethodHandling4(t *testing.T) {
 func TestWildcardMethodHandling(t *testing.T) {
 		mux := New()
 	call := false
+	paramCheck := false
+	errStr := ""
 	mux.GET("/{a}/{b}/{c}", nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
 		call = false
 	}))
@@ -507,8 +551,9 @@ func TestWildcardMethodHandling(t *testing.T) {
 	mux.PUT("/{a}/{b}/{c}", nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
 		call = false
 	}))
-	mux.OPTIONS("/{a}/{b}/{c}", nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+	mux.OPTIONS("/{a}/{b}/{c}", nil, http.HandlerFunc(func(w http.ResponseWriter, r2 *http.Request) {
 		call = true
+		paramCheck, errStr = checkParams(r2, []string{"a", "b", "c"}, []string{"e", "f", "g"})
 	}))
 	mux.PATCH("/{a}/{b}/{c}", nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
 		call = false
@@ -521,5 +566,8 @@ func TestWildcardMethodHandling(t *testing.T) {
 
 	if !call {
 		t.Error("handler should be called")
+	}
+	if !paramCheck{
+		t.Error(errStr)
 	}
 }

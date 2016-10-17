@@ -7,8 +7,8 @@ import (
 	"github.com/jinzhu/gorm"
 	_ "github.com/go-sql-driver/mysql"
 	"strconv"
-	//"github.com/go-web-framework/gflux/mux"
-	"./mux"
+	"github.com/go-web-framework/gflux/mux"
+	//"./mux"
 )
 
 var db *gorm.DB
