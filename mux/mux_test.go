@@ -419,6 +419,30 @@ func TestRouting9(t *testing.T) {
 	}))
 }
 
+// Test adding a value to an existing, non-leaf fragment
+func TestRouting10(t *testing.T) {
+	mux := New()
+	call := false
+	mux.Handle("/a/b/", nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		call = false
+	}))
+	mux.Handle("/a/", nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		call = true
+	}))
+	mux.Handle("/a/c", nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		call = true
+	}))
+
+	r, _ := http.NewRequest("GET", "/a", nil)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, r)
+
+	if !call {
+		t.Error("handler should be called")
+	}
+}
+
+
 // Attempt to directly request a wildcard - should not return the wildcard handler
 func TestDirectAccess(t *testing.T) {
 	mux := New()

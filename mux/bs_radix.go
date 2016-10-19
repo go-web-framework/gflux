@@ -128,6 +128,9 @@ func longestPrefix(k1, k2 string) int {
 }
 
 func isWildCardKey(s string) bool {
+	if s == "" {
+		return false
+	}
 	return s[0] == '{' && s[len(s)-1] == '}'
 }
 
@@ -142,7 +145,6 @@ func newMethodMap(r *Route) {
 }
 
 func appendMethodMap(r *Route, n *node) bool {
-
 
 	if _, ok := n.val.handlers[MethodAll]; ok {
 		return false //cannot append - ALL methods are already allowed
@@ -188,7 +190,11 @@ func (t *Trie) insert(r *Route) error {
 	for {
 		
 		if len(query) == 0{
-			if appendMethodMap(r, n) {
+			if n.val == nil{
+				newMethodMap(r)
+				n.val = r
+				return nil
+			} else if appendMethodMap(r, n) {
 				return nil
 			} else {
 				return errors.New("Could not append to existing key")
