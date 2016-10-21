@@ -125,3 +125,7 @@ func (m *Mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 	}
 }
+
+func (m *Mux) SetNotFound(handler http.Handler) {
+ 		m.NotFound = handler
+ }

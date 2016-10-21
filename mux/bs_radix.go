@@ -327,20 +327,6 @@ func (t *Trie) insert(r *Route) error {
 	return nil
 }
 
-// assumes query is already formatted so that it does not contain a leading
-// forward slash but does end with forward slash
-func isValidQuery(s string) bool {
-	tokens := strings.Split(s, "/")
-
-	for _, key := range tokens {
-		if key != "" && isWildCardKey(key) {
-			return false
-		}
-	}
-
-	return true
-}
-
 // Get returns the route, the wilcard values, and
 // whether a match was found for the supplied path.
 func (t *Trie) Get(s string, method string) (*Route, map[string]string, bool) {
@@ -353,9 +339,6 @@ func (t *Trie) Get(s string, method string) (*Route, map[string]string, bool) {
 		s = s + "/"
 	}
 	s = strings.TrimPrefix(s, "/")
-	if !isValidQuery(s) {
-		return nil, nil, false
-	}
 
 	n, found, remains := t.getLiteral(s, method, t.root)
 	if found {
@@ -417,6 +400,12 @@ func (t *Trie) getLiteral(s string, method string, n *node) (*node, bool, string
 			return n, false, search
 		}
 		n = child
+
+		//make sure we're not trying to directly retrieve a wildcard entry
+		if search[0] == '{' && n.prefix[len(n.prefix)-2] == '}' {
+			return n, false, search
+		} 
+
 		// Consume the search prefix
 		if strings.HasPrefix(search, n.prefix) {
 			search = search[len(n.prefix):]
