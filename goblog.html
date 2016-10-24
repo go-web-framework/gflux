@@ -4,7 +4,7 @@
 <body>
 <!-- list of stuff -->
 {{range $key, $value := .PostList}}
-		{{printf "%d" $value.Post_id}}
+		{{printf "%s" $value.Post_id}}
 		</br>
 		{{printf "%s" $value.Author}}
 		</br>

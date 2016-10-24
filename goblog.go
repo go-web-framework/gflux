@@ -6,8 +6,9 @@ import (
 	"html/template"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
-	"strconv"
-	"github.com/go-web-framework/gflux/mux"
+//	"strconv"
+//	"github.com/go-web-framework/gflux/mux"
+	"./mux"
 	"github.com/google/uuid"
 )
 
@@ -16,7 +17,7 @@ var db *gorm.DB
 var templates = template.Must(template.ParseFiles("goblog.html", "page.html"))
 
 // table posts (
-//   Post_id: int (autoincrement)
+//   Post_id: varchar(30)
 //   Author: varchar(30)
 //   Aext: varchar(200)
 // )
@@ -30,19 +31,18 @@ func main(){
 	}
 	defer db.Close()
 	
-	fmt.Println(db.HasTable(&Post{}))
-	
 	// Migrate the schema
  	db.AutoMigrate(&Post{})
+ 	
+ 	db.Clear
   
 	testMux := mux.New()
 	homeHandler := homeHandler{}
 	pageHandler := pageHandler{}
-	testHandler3 := handler404{}
-	testMux.Handle("/home", nil, homeHandler)
-	testMux.Handle("/page/{key}", nil, pageHandler)
-	testMux.Handle("/page/new/{key}", nil, pageHandler).Allow("POST")
-	testMux.SetNotFound(testHandler3)
+	newHandler := newHandler{}
+	testMux.GET("/home", nil, homeHandler)
+	testMux.GET("/page/{id}", nil, pageHandler)
+	testMux.POST("/page/new", nil, newHandler)
 	fmt.Println("Listening on :8080")
 	http.ListenAndServe(":8080", testMux)
 	
@@ -66,21 +66,11 @@ type pageHandler struct{
 }
 
 func (t pageHandler) ServeHTTP(w http.ResponseWriter, r *http.Request){
-	//database call
-	/*url := r.URL.Path
-	urls := strings.Split(url, "/")
-	idURL, err := strconv.Atoi(urls[len(urls)-1])
-	if (err != nil){
-		idURL = 0
-	}*/
 	params := mux.GetParams(r)
-	idURL, err := strconv.Atoi(params["id"])
-	if (err != nil){
-		idURL = 0
-	}
+	idURL := params["id"]
 	var post Post
 	db.Where("Post_id = ?", idURL).First(&post)
-	err = templates.ExecuteTemplate(w, "page.html", &post)
+	err := templates.ExecuteTemplate(w, "page.html", &post)
     if err != nil {
         http.Error(w, err.Error(), http.StatusInternalServerError)
     }
@@ -113,9 +103,9 @@ type goBlog struct{
 
 type Post struct{
 	gorm.Model
-	Author string
-	Text string
-	Post_id string
+	Post_id 	string 	`gorm:""primary_key"`
+	Author 		string `gorm:"type:varchar(20)"`
+	Text 			string	`gorm:"type:varchar(200)"`
 }
 
 type handler404 struct{
