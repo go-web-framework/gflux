@@ -1,0 +1,20 @@
+<html>
+<head>
+</head>
+<body>
+<!-- list of stuff -->
+{{range $key, $value := .PostList}}
+		{{printf "%s" $value.Post_id}}
+		</br>
+		{{printf "%s" $value.Author}}
+		</br>
+		{{printf "%s" $value.Text}}
+		</br>
+{{end}}
+<form action="/page/new" method="POST">
+<div>Author: <textarea name="Author"></textarea></div>
+<div>Post: <textarea name="Text"></textarea></div>
+<div><input type="submit" value="save"></div>
+</form> 
+</body>
+</html>

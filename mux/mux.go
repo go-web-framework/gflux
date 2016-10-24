@@ -1,88 +1,131 @@
 package mux
 
 import (
+	"context"
 	"errors"
 	"net/http"
-	//"context"
 )
 
-const varKey int = 0
+type key int
+
+const paramsCtxKey key = 0
 
 var Stop = errors.New("exit request handling")
 
-// Middleware represents an HTTP middlware function.
+// Middleware represents an HTTP middleware function.
 type Middleware func(w http.ResponseWriter, r *http.Request) error
 
-// Mux is a serve mux.
+type Route struct {
+	path       string
+	middleware []Middleware
+	handler    http.Handler
+
+	// methods is the list of allowed HTTP methods.
+	// If len(Methods) == 0, all HTTP methods are allowed.
+	handlers map[string]http.Handler
+	method string
+}
+
 type Mux struct {
-	radix *Trie
-	notFound http.Handler
+	trie     *Trie
+	NotFound http.Handler
 }
 
 func New() *Mux {
 	return &Mux{
-		radix: NewTrie(),
+		trie: NewTrie(),
 	}
 }
 
-func (m *Mux) Handle(path string, mw []Middleware, h http.Handler) *Route{
-	method := []string{"Get"}
-	r, err := m.radix.NewRoute(path, h, mw, method)
-	if err != nil {
-		return nil
-	} else {
-		return r
+func (m *Mux) handle(path string, mw []Middleware, h http.Handler, method string) *Route {
+	r := &Route{
+		path:       path,
+		middleware: mw,
+		handler:    h,
+		method: method,
 	}
+	// TODO: insert currently returns an error if r.path already exists.
+	// Instead, it should return an error only if same r.path
+	// with at least one of the same HTTP methods already exists.
+	if err := m.trie.insert(r); err != nil {
+		panic(err)
+	}
+	return r
 }
 
-func (m *Mux) ServeHTTP(w http.ResponseWriter, r *http.Request){
-	//e, _ := m.tree.Get(r.URL.Path);
-	e, _, found := m.radix.Get(r.URL.Path);
-	if !found {
-			m.HandleNotFound(w, r)
-			return
-	}
+func (m *Mux) Handle(path string, mw []Middleware, h http.Handler) *Route {
+	return m.handle(path, mw, h, MethodAll)
+}
 
-	for _, middleware := range e.Middleware{
-		err := middleware(w, r)
-		if (err != nil){ //err == Stop
-  		//middleware error
+func (m *Mux) GET(path string, mw []Middleware, h http.Handler) *Route {
+	return m.handle(path, mw, h, MethodGet)
+}
+
+func (m *Mux) POST(path string, mw []Middleware, h http.Handler) *Route {
+	return m.handle(path, mw, h, MethodPost)
+}
+
+func (m *Mux) PUT(path string, mw []Middleware, h http.Handler) *Route {
+	return m.handle(path, mw, h,  MethodPut)
+}
+
+func (m *Mux) PATCH(path string, mw []Middleware, h http.Handler) *Route {
+	return m.handle(path, mw, h, MethodPatch)
+}
+
+func (m *Mux) DELETE(path string, mw []Middleware, h http.Handler) *Route {
+	return m.handle(path, mw, h, MethodDelete)
+}
+
+func (m *Mux) HEAD(path string, mw []Middleware, h http.Handler) *Route {
+	return m.handle(path, mw, h, MethodHead)
+}
+
+func (m *Mux) OPTIONS(path string, mw []Middleware, h http.Handler) *Route {
+	return m.handle(path, mw, h, MethodOptions)
+}
+
+type Params map[string]string
+
+func GetParams(r *http.Request) Params {
+	return r.Context().Value(paramsCtxKey).(Params)
+}
+
+func SetParams(r *http.Request, p Params) *http.Request {
+	c := r.Context()
+	c = context.WithValue(c, paramsCtxKey, p)
+	r = r.WithContext(c) 
+	return r
+}
+
+func run(w http.ResponseWriter, r *http.Request, mw []Middleware, h http.Handler) {
+	for _, m := range mw {
+		if m != nil {
+			if m(w, r) == Stop {
+				return
+			}
 		}
 	}
-	//currently arbitrary values
-	//varValues := map[string]string{"Var1": "aaa", "2": "2"}
-	//varValues := "aaa"
-	//ctx := r.Context()
-	//ctx = context.WithValue(ctx, varKey, varValues)
-	//r = r.WithContext(ctx)
-
-	//method check?
-	e.Handler.ServeHTTP(w, r)
-}
-
-// NotFound the mux custom 404 handler
-func (m *Mux) SetNotFound(handler http.Handler) {
-		m.notFound = handler
-}
-
-// HandleNotFound handle when a request does not match a registered handler.
-func (m *Mux) HandleNotFound(rw http.ResponseWriter, req *http.Request) {
-	if m.notFound != nil {
-		m.notFound.ServeHTTP(rw, req)
-	} else {
-		http.NotFound(rw, req)
+	if h != nil {
+		h.ServeHTTP(w, r)
 	}
 }
 
-func (m *Mux) AllowMethod(path string, method ...string){
-		m.radix.UpdateRouteMethods(path, method...)
+func (m *Mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	route, p, found := m.trie.Get(r.URL.Path, r.Method)
+	if found {
+		r = SetParams(r, Params(p))
+		run(w, r, route.middleware, route.handler)
+		return
+	}
+
+	if m.NotFound != nil {
+		m.NotFound.ServeHTTP(w, r)
+	} else {
+		http.NotFound(w, r)
+	}
 }
 
-/*
-//Vars
-func Vars(r *http.Request) string{
-	return r.Context().Value(varKey).(string)
-	//return r.Context().Value(varKey).(map[string]string)
-}
-*/
-
+func (m *Mux) SetNotFound(handler http.Handler) {
+ 		m.NotFound = handler
+ }
