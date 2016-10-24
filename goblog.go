@@ -5,10 +5,10 @@ import (
 	"net/http"
 	"html/template"
 	"github.com/jinzhu/gorm"
-	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/jinzhu/gorm/dialects/sqlite"
 	"strconv"
 	"github.com/go-web-framework/gflux/mux"
-	//"./mux"
+	"github.com/google/uuid"
 )
 
 var db *gorm.DB
@@ -24,24 +24,25 @@ func main(){
 
 	// open database
 	var err error
-	db, err = gorm.Open("mysql", "goblog:password@tcp(127.0.0.1:3306)/goblog?parseTime=true")
+	db, err = gorm.Open("sqlite3", "goblog.db")
 	if err != nil {
 		panic("failed to connect database")
 	}
 	defer db.Close()
-	db.CreateTable(&Post{})
+	
+	fmt.Println(db.HasTable(&Post{}))
+	
 	// Migrate the schema
  	db.AutoMigrate(&Post{})
-	//clear
-	db.Delete(Post{})
   
 	testMux := mux.New()
 	homeHandler := homeHandler{}
 	pageHandler := pageHandler{}
-	newHandler := newHandler{}
-	testMux.GET("/home", nil, homeHandler)
-	testMux.GET("/page/{id}", nil, pageHandler)
-	testMux.POST("/page/new", nil, newHandler)
+	testHandler3 := handler404{}
+	testMux.Handle("/home", nil, homeHandler)
+	testMux.Handle("/page/{key}", nil, pageHandler)
+	testMux.Handle("/page/new/{key}", nil, pageHandler).Allow("POST")
+	testMux.SetNotFound(testHandler3)
 	fmt.Println("Listening on :8080")
 	http.ListenAndServe(":8080", testMux)
 	
@@ -98,7 +99,7 @@ func (t newHandler) ServeHTTP(w http.ResponseWriter, r *http.Request){
 	var postList []Post
 	db.Find(&postList)
 	//store post
-	var post = Post{Post_id: len(postList), Author:author, Text:text}
+	var post = Post{Author:author, Text:text, Post_id:uuid.New().String()}
 	db.Create(&post)
 	
 	http.Redirect(w, r, "/home", http.StatusFound)
@@ -112,10 +113,9 @@ type goBlog struct{
 
 type Post struct{
 	gorm.Model
-	Post_id 	int 	`gorm:""primary_key"`
-	Author 		string `gorm:"type:varchar(20)"`
-	Text 			string	`gorm:"type:varchar(200)"`
-	
+	Author string
+	Text string
+	Post_id string
 }
 
 type handler404 struct{
