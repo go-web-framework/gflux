@@ -21,7 +21,7 @@ func main() {
 	db.SetSchema(&Product{})
 	
 	// insert item into database
-	db.Insert(Product{
+	db.Insert(&Product{
 		Code: "L1212"
 		Price: 1000
 	})

@@ -2,6 +2,10 @@ package gorm
 
 import (
 	"github.com/go-web-framework/gorm"
+//	_ "github.com/jinzhu/gorm/dialects/mysql"
+//	_ "github.com/jinzhu/gorm/dialects/postgres"
+	_ "github.com/jinzhu/gorm/dialects/sqlite"
+//	_ "github.com/jinzhu/gorm/dialects/mssql"
 )
 
 // Gorm is the gorm wrapper
@@ -20,7 +24,7 @@ func (g *Gorm) Close() {
 	g.db.Close()
 }
 
-func (g *Gorm) SetSchema() {
+func (g *Gorm) SetSchema(typePointer interface{}) {
 }
 
 func (g *Gorm) Insert() {
