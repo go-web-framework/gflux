@@ -34,8 +34,6 @@ func main(){
 	// Migrate the schema
  	db.AutoMigrate(&Post{})
  	
- 	db.Clear
-  
 	testMux := mux.New()
 	homeHandler := homeHandler{}
 	pageHandler := pageHandler{}
