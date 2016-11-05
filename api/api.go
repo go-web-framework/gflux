@@ -3,9 +3,8 @@ package api
 import (
 	"../mux" // TODO: change to full path
 	"fmt"
-	"github.com/jinzhu/gorm"
-	_ "github.com/mattn/go-sqlite3"
 	"net/http"
+	"reflect"
 )
 
 // For inline http.Handler creation
@@ -18,25 +17,19 @@ func (h ProtoHttpHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-type Model struct {
-	gorm.Model
-}
-
 type API struct {
-	db  *gorm.DB
+	db  *Orm
 	mux *mux.Mux
 }
 
 type Resource struct {
 	Name string
+	Type reflect.Type
 }
 
-func New(dbName string) (*API, error) {
-	db, err := gorm.Open("sqlite3", dbName)
-	if err != nil {
-		return nil, err
-	}
-	return &API{db: db, mux: mux.New()}, nil
+func New(dbPath string) (*API) {
+	db := InitDB(dbPath)
+	return &API{db: db, mux: mux.New()}
 }
 
 /////////  API  /////////////////////////////
@@ -45,16 +38,23 @@ func (a *API) Close() {
 	a.db.Close()
 }
 
+// create a new resource for the api
 func (a *API) NewResource(name string, i interface{}) *Resource {
+	// create database table
+	a.db.CreateTable(name, i)
+
+	// create handler
 	h := struct{ ProtoHttpHandler }{}
 	h.ServeHTTPMethod = func(w http.ResponseWriter, r *http.Request) {
 		id := mux.GetParams(r)["id"]
 		fmt.Fprintf(w, "<h1>You've reached resource "+name+" with id "+id+"!</h1>")
 		return
 	}
+	
+	// assign handler
 	a.mux.Handle("/"+name+"/{id}", nil, h)
-	return &Resource{name}
-	// TODO: use i for database initialization
+	
+	return &Resource{name, reflect.TypeOf(i)}
 }
 
 func (a *API) Serve(port ...string) {
