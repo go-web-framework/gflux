@@ -22,11 +22,6 @@ type API struct {
 	mux *mux.Mux
 }
 
-type Resource struct {
-	Name string
-	Type reflect.Type
-}
-
 func New(dbPath string) (*API) {
 	db := InitDB(dbPath)
 	return &API{db: db, mux: mux.New()}
@@ -54,7 +49,10 @@ func (a *API) NewResource(name string, i interface{}) *Resource {
 	// assign handler
 	a.mux.Handle("/"+name+"/{id}", nil, h)
 	
-	return &Resource{name, reflect.TypeOf(i)}
+	// create resource
+	r := NewResource(name, reflect.TypeOf(i))
+	
+	return r
 }
 
 func (a *API) Serve(port ...string) {
