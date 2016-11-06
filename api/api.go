@@ -22,7 +22,7 @@ type API struct {
 	mux *mux.Mux
 }
 
-func New(dbPath string) (*API) {
+func New(dbPath string) *API {
 	db := InitDB(dbPath)
 	return &API{db: db, mux: mux.New()}
 }
@@ -45,13 +45,13 @@ func (a *API) NewResource(name string, i interface{}) *Resource {
 		fmt.Fprintf(w, "<h1>You've reached resource "+name+" with id "+id+"!</h1>")
 		return
 	}
-	
+
 	// assign handler
 	a.mux.Handle("/"+name+"/{id}", nil, h)
-	
+
 	// create resource
 	r := NewResource(name, reflect.TypeOf(i))
-	
+
 	return r
 }
 

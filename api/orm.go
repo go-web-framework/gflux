@@ -2,9 +2,9 @@ package api
 
 import (
 	"database/sql"
+	"fmt"
 	_ "github.com/mattn/go-sqlite3"
 	"reflect"
-	"fmt"
 )
 
 type Orm struct {
@@ -17,7 +17,9 @@ func InitDB(filepath string) *Orm {
 		fmt.Println("error opening database : ")
 		panic(err)
 	}
-	if db == nil { panic(filepath + " not found") }
+	if db == nil {
+		panic(filepath + " not found")
+	}
 	return &Orm{db}
 }
 
@@ -31,12 +33,12 @@ func (o *Orm) Close() {
 // Panics if input type is not a struct with at least one field
 func (o *Orm) CreateTable(name string, schemaType interface{}) *Orm {
 	t := reflect.TypeOf(schemaType)
-	
+
 	// If ptr, dereference schema type
 	if t.Kind().String() == "ptr" {
 		t = t.Elem()
 	}
-	
+
 	// Panics
 	if t.Kind().String() != "struct" {
 		panic("Table creation : schema type must be a struct")
@@ -44,21 +46,19 @@ func (o *Orm) CreateTable(name string, schemaType interface{}) *Orm {
 	if t.NumField() < 1 {
 		panic("Table creation : schema type empty")
 	}
-	
+
 	// Create table
-	table := "CREATE TABLE IF NOT EXISTS "+name+"(Id TEXT NOT NULL PRIMARY KEY, "
-	for i := 0; i < t.NumField() - 1; i++ {
+	table := "CREATE TABLE IF NOT EXISTS " + name + "(Id TEXT NOT NULL PRIMARY KEY, "
+	for i := 0; i < t.NumField()-1; i++ {
 		table = table + t.Field(i).Name + " TEXT, "
 	}
-	table = table + t.Field(t.NumField() - 1).Name + " TEXT);"
-	
+	table = table + t.Field(t.NumField()-1).Name + " TEXT);"
+
 	_, err := o.db.Exec(table)
 	if err != nil {
 		fmt.Println("Table creation error : ")
 		panic(err)
 	}
-	
+
 	return o
 }
-	
-	
