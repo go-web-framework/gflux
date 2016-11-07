@@ -31,6 +31,7 @@ func (o *Orm) Close() {
 // Create a table if it does not exist
 // Table has the same schema as input struct plus an Id field
 // Panics if input type is not a struct with at least one field
+// TODO: Right now it only works with strings
 func (o *Orm) CreateTable(name string, schemaType interface{}) *Orm {
 	t := reflect.TypeOf(schemaType)
 
@@ -61,4 +62,32 @@ func (o *Orm) CreateTable(name string, schemaType interface{}) *Orm {
 	}
 
 	return o
+}
+
+func (o *Orm) Find(t reflect.Type, tableName string, id string) interface{} {
+	// Panics
+	if t.Kind().String() != "struct" {
+		panic("Table find : schema type must be a struct")
+	}
+	if t.NumField() < 1 {
+		panic("Table find : schema type empty")
+	}
+
+	// Query
+	var ret interface{}
+
+	//	fields := make([](*string), t.NumField() + 1)
+
+	var a, b, c string
+
+	err := o.db.QueryRow("SELECT * FROM "+tableName+" WHERE Id=?", id).Scan(&a, &b, &c)
+	if err == sql.ErrNoRows {
+		return nil
+	} else if err != nil {
+		panic(err)
+	}
+
+	// Return
+	// TODO: Set ret
+	return ret
 }

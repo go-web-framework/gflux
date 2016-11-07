@@ -1,19 +1,20 @@
 package api
 
 import (
+	"../mux"
+	"encoding/json"
 	"net/http"
 	"reflect"
-	//	"../mux"
-	"encoding/json"
 )
 
 type Resource struct {
 	Name     string
 	Type     reflect.Type
+	api      *API
 	Handlers map[string]func(interface{}, http.ResponseWriter, []string)
 }
 
-func NewResource(name string, structType interface{}) *Resource {
+func NewResource(name string, structType interface{}, api *API) *Resource {
 	t := reflect.TypeOf(structType)
 
 	// If ptr, dereference schema type
@@ -21,7 +22,7 @@ func NewResource(name string, structType interface{}) *Resource {
 		t = t.Elem()
 	}
 
-	r := Resource{Name: name, Type: t}
+	r := Resource{Name: name, Type: t, api: api}
 	r.Handlers = make(map[string]func(interface{}, http.ResponseWriter, []string))
 	r.Handlers["GET"] = defaultGET
 	r.Handlers["PUT"] = defaultPUT
@@ -67,12 +68,17 @@ type DefaultGETHandler struct {
 }
 
 func (h DefaultGETHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	res := h.res
+	api := res.api
+
 	// find id from request
-	//	id := mux.GetParams(r)["id"]
+	id := mux.GetParams(r)["id"]
 
-	// empty struct -- TODO: change to read from database
-	obj := reflect.New(h.res.Type).Elem().Interface()
+	// read from database
+	//	obj := reflect.New(res.Type).Elem().Interface() // -using this now because database lookup isnt working
+	obj := api.db.Find(res.Type, res.Name, id)
 
+	// Call GET handler which is either defaultGET or user-overridden
 	h.res.Handlers["GET"](obj, w, []string{"application/json"})
 
 	//fmt.Fprintf(w, "<h1>You've reached resource " + h.res.Name + " with id " + id + "!</h1>")

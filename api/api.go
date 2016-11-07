@@ -24,9 +24,8 @@ func (a *API) Close() {
 
 // create a new resource for the api
 func (a *API) NewResource(name string, structType interface{}) *Resource {
-
 	// create resource
-	res := NewResource(name, structType)
+	res := NewResource(name, structType, a)
 
 	// create database table
 	a.db.CreateTable(name, structType)
