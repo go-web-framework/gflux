@@ -1,7 +1,7 @@
 package api
 
 import (
-	"github.com/go-web-framework/mux"
+	"github.com/go-web-framework/gflux/mux"
 	"fmt"
 	"net/http"
 )
