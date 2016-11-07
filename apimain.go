@@ -1,7 +1,7 @@
 package main
 
 import (
-	"./api"
+	"./api" //TODO: Change to full path
 )
 
 type Post struct {
@@ -10,7 +10,8 @@ type Post struct {
 }
 
 func main() {
-	a := api.New("test.db")
+	a := api.New("sqlite3", "test.db")
+//	a := api.New("mysql", "user:password@/test")
 	defer a.Close()
 	
 	a.NewResource("posts", &Post{})

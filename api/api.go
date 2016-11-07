@@ -11,8 +11,8 @@ type API struct {
 	mux *mux.Mux
 }
 
-func New(dbPath string) *API {
-	db := InitDB(dbPath)
+func New(dbDriver string, dbPath string) *API {
+	db := InitDB(dbDriver, dbPath)
 	return &API{db: db, mux: mux.New()}
 }
 

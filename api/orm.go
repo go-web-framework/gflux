@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/go-sql-driver/mysql"
 	"reflect"
 )
 
@@ -11,8 +12,8 @@ type Orm struct {
 	db *sql.DB
 }
 
-func InitDB(filepath string) *Orm {
-	db, err := sql.Open("sqlite3", filepath)
+func InitDB(driver string, filepath string) *Orm {
+	db, err := sql.Open(driver, filepath)
 	if err != nil {
 		fmt.Println("error opening database : ")
 		panic(err)
@@ -49,11 +50,11 @@ func (o *Orm) CreateTable(name string, schemaType interface{}) *Orm {
 	}
 
 	// Create table
-	table := "CREATE TABLE IF NOT EXISTS " + name + "(Id TEXT NOT NULL PRIMARY KEY, "
+	table := "CREATE TABLE IF NOT EXISTS " + name + "(Id VARCHAR(200) NOT NULL PRIMARY KEY, "
 	for i := 0; i < t.NumField()-1; i++ {
-		table = table + t.Field(i).Name + " TEXT, "
+		table = table + t.Field(i).Name + " VARCHAR(200), "
 	}
-	table = table + t.Field(t.NumField()-1).Name + " TEXT);"
+	table = table + t.Field(t.NumField()-1).Name + " VARCHAR(200));"
 
 	_, err := o.db.Exec(table)
 	if err != nil {

@@ -1,7 +1,7 @@
 package api
 
 import (
-	"../mux"
+	"../mux" // TODO: Change to full path
 	"encoding/json"
 	"net/http"
 	"reflect"
