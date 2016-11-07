@@ -4,18 +4,7 @@ import (
 	"../mux" // TODO: change to full path
 	"fmt"
 	"net/http"
-	"reflect"
 )
-
-// For inline http.Handler creation
-type ProtoHttpHandler struct {
-	ServeHTTPMethod func(w http.ResponseWriter, r *http.Request)
-}
-
-func (h ProtoHttpHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	h.ServeHTTPMethod(w, r)
-	return
-}
 
 type API struct {
 	db  *Orm
@@ -34,25 +23,21 @@ func (a *API) Close() {
 }
 
 // create a new resource for the api
-func (a *API) NewResource(name string, i interface{}) *Resource {
-	// create database table
-	a.db.CreateTable(name, i)
+func (a *API) NewResource(name string, structType interface{}) *Resource {
 
-	// create handler
-	h := struct{ ProtoHttpHandler }{}
-	h.ServeHTTPMethod = func(w http.ResponseWriter, r *http.Request) {
-		id := mux.GetParams(r)["id"]
-		fmt.Fprintf(w, "<h1>You've reached resource "+name+" with id "+id+"!</h1>")
-		return
-	}
+	// create resource
+	res := NewResource(name, structType)
+
+	// create database table
+	a.db.CreateTable(name, structType)
+
+	// create handlers
+	h := DefaultGETHandler{res}
 
 	// assign handler
 	a.mux.Handle("/"+name+"/{id}", nil, h)
 
-	// create resource
-	r := NewResource(name, reflect.TypeOf(i))
-
-	return r
+	return res
 }
 
 func (a *API) Serve(port ...string) {
