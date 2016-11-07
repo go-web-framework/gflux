@@ -113,7 +113,7 @@ func run(w http.ResponseWriter, r *http.Request, mw []Middleware, h http.Handler
 
 func (m *Mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	route, p, found := m.trie.Get(r.URL.Path, r.Method)
-	if found {
+	if (found && roue != nil) {
 		r = SetParams(r, Params(p))
 		run(w, r, route.middleware, route.handler)
 		return
