@@ -1,10 +1,11 @@
 package api
 
 import (
-	"../mux" // TODO: Change to full path
+	"github.com/go-web-framework/gflux/mux"
 	"encoding/json"
 	"net/http"
 	"reflect"
+	//"fmt"
 )
 
 type Resource struct {

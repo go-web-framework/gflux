@@ -1,7 +1,7 @@
 package api
 
 import (
-	"../mux" // TODO: change to full path
+	"github.com/go-web-framework/gflux/mux"
 	"fmt"
 	"net/http"
 )
