@@ -75,7 +75,6 @@ func (h DefaultGETHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	id := mux.GetParams(r)["id"]
 
 	// read from database
-	//	obj := reflect.New(res.Type).Elem().Interface() // -using this now because database lookup isnt working
 	obj := api.db.Find(res.Type, res.Name, id)
 
 	// Call GET handler which is either defaultGET or user-overridden

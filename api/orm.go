@@ -73,21 +73,33 @@ func (o *Orm) Find(t reflect.Type, tableName string, id string) interface{} {
 		panic("Table find : schema type empty")
 	}
 
+	// Initialize query structure
+	var fields []interface{}
+
+	var idd string
+	fields = append(fields, &idd)
+	for i := 1; i < t.NumField()+1; i++ {
+		var a string
+		fields = append(fields, &a)
+	}
+
 	// Query
-	var ret interface{}
-
-	//	fields := make([](*string), t.NumField() + 1)
-
-	var a, b, c string
-
-	err := o.db.QueryRow("SELECT * FROM "+tableName+" WHERE Id=?", id).Scan(&a, &b, &c)
+	err := o.db.QueryRow("SELECT * FROM "+tableName+" WHERE Id=?", id).Scan(fields...)
 	if err == sql.ErrNoRows {
 		return nil
 	} else if err != nil {
 		panic(err)
 	}
 
-	// Return
-	// TODO: Set ret
+	// Create output
+	retVal := reflect.New(t).Elem()
+	for i := 0; i < t.NumField(); i++ {
+		v1 := retVal.Field(i)
+		v2 := reflect.ValueOf(fields[i+1])
+
+		v1.SetString(v2.Elem().Interface().(string))
+	}
+
+	ret := retVal.Interface()
 	return ret
 }
