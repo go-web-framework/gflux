@@ -7,10 +7,13 @@ See apimain.go currently in gflux/ (will later move to examples)
 # Drawbacks
 
 ## User Drawbacks
+* The user cannot already have a table with the same name as a resource in the database provided to gflux/api.
 * Only supports strings right now.
 * Api IDs are abstracted away from the user.
 * Name of variables will be the same name in the database as well as used for requests. In go this could be a minor drawback as the variable names will have to be capitalized.
 * Only support mysql and sqlite3 right now (Not REALLY a drawback).
+* Only supports application/json right now.
+* Only supports POST, GET and DELETE by default.
 
 ## Code Drawbacks
 * Using our own orm and database management

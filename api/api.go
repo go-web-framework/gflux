@@ -31,7 +31,7 @@ func (a *API) NewResource(name string, structType interface{}) *Resource {
 	a.db.CreateTable(name, structType)
 
 	// create handlers
-	h := DefaultGETHandler{res}
+	h := DefaultGETHandler{res} //TODO: Change to all request handlers except POST
 
 	// assign handler
 	a.mux.Handle("/"+name+"/{id}", nil, h)
