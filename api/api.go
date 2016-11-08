@@ -1,7 +1,7 @@
 package api
 
 import (
-	"github.com/go-web-framework/gflux/mux"
+	"../mux"
 	"fmt"
 	"net/http"
 )
@@ -31,10 +31,12 @@ func (a *API) NewResource(name string, structType interface{}) *Resource {
 	a.db.CreateTable(name, structType)
 
 	// create handlers
-	h := DefaultGETHandler{res} //TODO: Change to all request handlers except POST
+	hItem := ItemHandler{res}
+	hCollection := CollectionHandler{res}
 
 	// assign handler
-	a.mux.Handle("/"+name+"/{id}", nil, h)
+	a.mux.Handle("/"+name+"/{id}", nil, hItem)
+	a.mux.Handle("/"+name, nil, hCollection)
 
 	return res
 }

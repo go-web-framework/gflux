@@ -1,18 +1,18 @@
 package api
 
 import (
-	"github.com/go-web-framework/gflux/mux"
-	"encoding/json"
+	"../mux"
 	"net/http"
 	"reflect"
-	//"fmt"
+	"fmt"
 )
 
 type Resource struct {
 	Name     string
 	Type     reflect.Type
 	api      *API
-	Handlers map[string]func(interface{}, http.ResponseWriter, []string)
+	ItemHandlers map[string]func(interface{}, http.ResponseWriter, []string)
+	CollectionHandlers map[string]func([]interface{}, http.ResponseWriter, []string)
 }
 
 func NewResource(name string, structType interface{}, api *API) *Resource {
@@ -24,51 +24,26 @@ func NewResource(name string, structType interface{}, api *API) *Resource {
 	}
 
 	r := Resource{Name: name, Type: t, api: api}
-	r.Handlers = make(map[string]func(interface{}, http.ResponseWriter, []string))
-	r.Handlers["GET"] = defaultGET
-	r.Handlers["PUT"] = defaultPUT
+	
+	r.ItemHandlers = make(map[string]func(interface{}, http.ResponseWriter, []string))
+	r.ItemHandlers["GET"] = defaultItemGET
+	r.ItemHandlers["PUT"] = defaultItemPUT
+	
+	r.CollectionHandlers = make(map[string]func([]interface{}, http.ResponseWriter, []string))
+	r.CollectionHandlers["GET"] = defaultCollectionGET
 
 	return &r
 }
 
-func defaultGET(obj interface{}, w http.ResponseWriter, accepts []string) {
-	if len(accepts) > 1 {
-		panic("ERROR with GET: Override the GET handler to support accepts other than application/json")
-	} else if accepts[0] != "application/json" {
-		panic("ERROR with GET: Override the GET handler to support accepts other than application/json")
-	}
-
-	// if object was found in the database
-	if obj != nil {
-		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-		w.WriteHeader(http.StatusOK)
-		err := json.NewEncoder(w).Encode(obj)
-		if err != nil {
-			panic(err)
-		}
-	} else {
-		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-		w.WriteHeader(http.StatusNotFound)
-		jsonErr := struct {
-			Code int
-			Text string
-		}{Code: http.StatusNotFound, Text: "Not Found"}
-		err := json.NewEncoder(w).Encode(jsonErr)
-		if err != nil {
-			panic(err)
-		}
-	}
-
-}
-
-func defaultPUT(interface{}, http.ResponseWriter, []string) {
-}
-
-type DefaultGETHandler struct {
+type ItemHandler struct {
 	res *Resource
 }
 
-func (h DefaultGETHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+type CollectionHandler struct {
+	res *Resource
+}
+
+func (h ItemHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	res := h.res
 	api := res.api
 
@@ -77,10 +52,36 @@ func (h DefaultGETHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// read from database
 	obj := api.db.Find(res.Type, res.Name, id)
+	
+	// Check if handler has been implemented for the request method
+	_, exists := res.ItemHandlers[r.Method]
+	if exists == true {
+		res.ItemHandlers[r.Method](obj, w, []string{"application/json"})
+	} else {
+		fmt.Println(r.RequestURI + " does not have a " + r.Method + " method defined")
+		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+		w.WriteHeader(http.StatusNotFound)
+	}
 
-	// Call GET handler which is either defaultGET or user-overridden
-	h.res.Handlers["GET"](obj, w, []string{"application/json"})
+	return
+}
 
-	//fmt.Fprintf(w, "<h1>You've reached resource " + h.res.Name + " with id " + id + "!</h1>")
+func (h CollectionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	res := h.res
+	api := res.api
+
+	// read from database
+	objs := api.db.FindAll(res.Type, res.Name)
+	
+	// Check if handler has been implemented for the request method
+	_, exists := res.CollectionHandlers[r.Method]
+	if exists == true {
+		res.CollectionHandlers[r.Method](objs, w, []string{"application/json"})
+	} else {
+		fmt.Println(r.RequestURI + " does not have a " + r.Method + " method defined")
+		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+		w.WriteHeader(http.StatusNotFound)
+	}
+
 	return
 }

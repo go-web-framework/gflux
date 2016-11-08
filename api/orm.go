@@ -85,7 +85,7 @@ func (o *Orm) Find(t reflect.Type, tableName string, id string) interface{} {
 	}
 
 	// Query
-	err := o.db.QueryRow("SELECT * FROM "+tableName+" WHERE Id=?", id).Scan(fields...)
+	err := o.db.QueryRow("SELECT * FROM " + tableName + " WHERE Id=?", id).Scan(fields...)
 	if err == sql.ErrNoRows {
 		return nil
 	} else if err != nil {
@@ -102,5 +102,58 @@ func (o *Orm) Find(t reflect.Type, tableName string, id string) interface{} {
 	}
 
 	ret := retVal.Interface()
+	return ret
+}
+
+func (o *Orm) FindAll(t reflect.Type, tableName string) []interface{} {
+	// Panics
+	if t.Kind().String() != "struct" {
+		panic("Table find : schema type must be a struct")
+	}
+	if t.NumField() < 1 {
+		panic("Table find : schema type empty")
+	}
+
+	// Initialize query structure
+	var fields []interface{}
+
+	var idd string
+	fields = append(fields, &idd)
+	for i := 1; i < t.NumField()+1; i++ {
+		var a string
+		fields = append(fields, &a)
+	}
+
+	// Query
+	rows, err := o.db.Query("SELECT * FROM " + tableName)
+	if err != nil {
+		panic(err)
+	}
+	defer rows.Close()
+
+	// Create output
+	var ret []interface{}
+	for rows.Next() {
+		// Scan rows into fields
+		if err := rows.Scan(fields...); err != nil {
+			panic(err)
+		}
+		
+		// Scan fields into retVal interface
+		retVal := reflect.New(t).Elem()
+		for i := 0; i < t.NumField(); i++ {
+			v1 := retVal.Field(i)
+			v2 := reflect.ValueOf(fields[i+1])
+
+			v1.SetString(v2.Elem().Interface().(string))
+		}
+		
+		// Append retVal interface to list of returned interface objects
+		ret = append(ret, retVal.Interface())
+	}
+	if err := rows.Err(); err != nil {
+		panic(err)
+	}
+	
 	return ret
 }
