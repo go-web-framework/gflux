@@ -27,7 +27,7 @@ func NewResource(name string, structType interface{}, api *API) *Resource {
 	
 	r.ItemHandlers = make(map[string]func(interface{}, http.ResponseWriter, []string))
 	r.ItemHandlers["GET"] = defaultItemGET
-	r.ItemHandlers["PUT"] = defaultItemPUT
+	r.ItemHandlers["DELETE"] = defaultItemDELETE
 	
 	r.CollectionHandlers = make(map[string]func([]interface{}, http.ResponseWriter, []string))
 	r.CollectionHandlers["GET"] = defaultCollectionGET
@@ -49,13 +49,19 @@ func (h ItemHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// find id from request
 	id := mux.GetParams(r)["id"]
-
-	// read from database
-	obj := api.db.Find(res.Type, res.Name, id)
 	
 	// Check if handler has been implemented for the request method
 	_, exists := res.ItemHandlers[r.Method]
 	if exists == true {
+		// query database
+		var obj interface{}
+		if(r.Method == "DELETE"){
+			obj = api.db.FindAndDelete(res.Type, res.Name, id)
+		} else {
+			obj = api.db.Find(res.Type, res.Name, id)
+		}
+		
+		// call handler
 		res.ItemHandlers[r.Method](obj, w, []string{"application/json"})
 	} else {
 		fmt.Println(r.RequestURI + " does not have a " + r.Method + " method defined")
@@ -69,13 +75,12 @@ func (h ItemHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (h CollectionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	res := h.res
 	api := res.api
-
-	// read from database
-	objs := api.db.FindAll(res.Type, res.Name)
 	
 	// Check if handler has been implemented for the request method
 	_, exists := res.CollectionHandlers[r.Method]
 	if exists == true {
+		// read from database
+		objs := api.db.FindAll(res.Type, res.Name)
 		res.CollectionHandlers[r.Method](objs, w, []string{"application/json"})
 	} else {
 		fmt.Println(r.RequestURI + " does not have a " + r.Method + " method defined")

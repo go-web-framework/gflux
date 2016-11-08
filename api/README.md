@@ -95,13 +95,13 @@ We are currently using the drivers at [github.com/mattn/go-sqlite3]([github.com/
 ## Code Drawbacks
 * Using our own orm and database management
 * Only works for strings at the moment
-* Case-sensitive for some things.
+* Case-sensitive for some things
 * Order of struct variables MIGHT matter to the code
+* Current implementation still requires all methods to be processed in ServeHTTP() in resource.go (The user would not be able to handle DELETE from scratch in their override handlers since gflux/api takes care of the database queries before calling the override handlers).
 
 # TODOs
 * POST handlers
-* A lot of things
-* Basically only GET is done
+* Allow()
 * Change imports to github.com/go-web-framework
 * If the name gflux changes, this might affect some panic statements
 * Move apimain.go to examples

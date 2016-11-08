@@ -157,3 +157,26 @@ func (o *Orm) FindAll(t reflect.Type, tableName string) []interface{} {
 	
 	return ret
 }
+
+func (o *Orm) FindAndDelete(t reflect.Type, tableName string, id string) interface{} {
+	ret := o.Find(t, tableName, id)
+	
+	// Don't try deleting if doesnt exist
+	if ret == nil {
+		return nil
+	}
+	
+	// Create statement
+	stmt, err  := o.db.Prepare("DELETE FROM " + tableName + " WHERE Id=?")
+	if err != nil {
+		panic(err)
+	}
+	
+	// Execute deletion statment
+	_, err = stmt.Exec(id)
+	if err != nil {
+		panic(err)
+	}
+	
+	return ret
+}
