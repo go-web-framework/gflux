@@ -1,3 +1,4 @@
+// package api allows for easy creation of REST APIs
 package api
 
 import (
@@ -9,7 +10,7 @@ import (
 )
 
 type Orm struct {
-	db *sql.DB
+	DB *sql.DB
 }
 
 func InitDB(driver string, filepath string) *Orm {
@@ -26,7 +27,7 @@ func InitDB(driver string, filepath string) *Orm {
 
 // Close database
 func (o *Orm) Close() {
-	o.db.Close()
+	o.DB.Close()
 }
 
 // Create a table if it does not exist
@@ -56,7 +57,7 @@ func (o *Orm) CreateTable(name string, schemaType interface{}) *Orm {
 	}
 	table = table + t.Field(t.NumField()-1).Name + " VARCHAR(200));"
 
-	_, err := o.db.Exec(table)
+	_, err := o.DB.Exec(table)
 	if err != nil {
 		fmt.Println("Table creation error : ")
 		panic(err)
@@ -85,7 +86,7 @@ func (o *Orm) Find(t reflect.Type, tableName string, id string) interface{} {
 	}
 
 	// Query
-	err := o.db.QueryRow("SELECT * FROM " + tableName + " WHERE Id=?", id).Scan(fields...)
+	err := o.DB.QueryRow("SELECT * FROM " + tableName + " WHERE Id=?", id).Scan(fields...)
 	if err == sql.ErrNoRows {
 		return nil
 	} else if err != nil {
@@ -125,7 +126,7 @@ func (o *Orm) FindAll(t reflect.Type, tableName string) []interface{} {
 	}
 
 	// Query
-	rows, err := o.db.Query("SELECT * FROM " + tableName)
+	rows, err := o.DB.Query("SELECT * FROM " + tableName)
 	if err != nil {
 		panic(err)
 	}
@@ -167,7 +168,7 @@ func (o *Orm) FindAndDelete(t reflect.Type, tableName string, id string) interfa
 	}
 	
 	// Create statement
-	stmt, err  := o.db.Prepare("DELETE FROM " + tableName + " WHERE Id=?")
+	stmt, err  := o.DB.Prepare("DELETE FROM " + tableName + " WHERE Id=?")
 	if err != nil {
 		panic(err)
 	}

@@ -1,3 +1,4 @@
+// package api allows for easy creation of REST APIs
 package api
 
 import (
@@ -7,19 +8,17 @@ import (
 )
 
 type API struct {
-	db  *Orm
+	DB  *Orm
 	mux *mux.Mux
 }
 
 func New(dbDriver string, dbPath string) *API {
 	db := InitDB(dbDriver, dbPath)
-	return &API{db: db, mux: mux.New()}
+	return &API{DB: db, mux: mux.New()}
 }
 
-/////////  API  /////////////////////////////
-
 func (a *API) Close() {
-	a.db.Close()
+	a.DB.Close()
 }
 
 // create a new resource for the api
@@ -28,11 +27,11 @@ func (a *API) NewResource(name string, structType interface{}) *Resource {
 	res := NewResource(name, structType, a)
 
 	// create database table
-	a.db.CreateTable(name, structType)
+	a.DB.CreateTable(name, structType)
 
 	// create handlers
-	hItem := ItemHandler{res}
-	hCollection := CollectionHandler{res}
+	hItem := itemHandler{res}
+	hCollection := collectionHandler{res}
 
 	// assign handler
 	a.mux.Handle("/"+name+"/{id}", nil, hItem)

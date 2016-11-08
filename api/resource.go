@@ -1,3 +1,4 @@
+// package api allows for easy creation of REST APIs
 package api
 
 import (
@@ -35,15 +36,15 @@ func NewResource(name string, structType interface{}, api *API) *Resource {
 	return &r
 }
 
-type ItemHandler struct {
+type itemHandler struct {
 	res *Resource
 }
 
-type CollectionHandler struct {
+type collectionHandler struct {
 	res *Resource
 }
 
-func (h ItemHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h itemHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	res := h.res
 	api := res.api
 
@@ -56,9 +57,9 @@ func (h ItemHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// query database
 		var obj interface{}
 		if(r.Method == "DELETE"){
-			obj = api.db.FindAndDelete(res.Type, res.Name, id)
+			obj = api.DB.FindAndDelete(res.Type, res.Name, id)
 		} else {
-			obj = api.db.Find(res.Type, res.Name, id)
+			obj = api.DB.Find(res.Type, res.Name, id)
 		}
 		
 		// call handler
@@ -72,7 +73,7 @@ func (h ItemHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-func (h CollectionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h collectionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	res := h.res
 	api := res.api
 	
@@ -80,7 +81,7 @@ func (h CollectionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	_, exists := res.CollectionHandlers[r.Method]
 	if exists == true {
 		// read from database
-		objs := api.db.FindAll(res.Type, res.Name)
+		objs := api.DB.FindAll(res.Type, res.Name)
 		res.CollectionHandlers[r.Method](objs, w, []string{"application/json"})
 	} else {
 		fmt.Println(r.RequestURI + " does not have a " + r.Method + " method defined")
