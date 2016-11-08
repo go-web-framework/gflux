@@ -4,7 +4,7 @@ gflux/api
 # Usage
 See apimain.go currently in gflux/ (will later move to examples)
 
-```
+```go
 package main
 
 import (
@@ -28,7 +28,7 @@ func main() {
 
 ## Resources
 
-```
+```go
 resPosts := a.NewResource("posts", &Post{})
 ```
 Resources allow GET, POST and DELETE requests by default. Creating a new resource creates a new table in the specified database and IDs are controlled by gflux/api. In the above example, Post is a user-defined type. A pointer to an empty Post is passed to the function as a schema-type for the function.
@@ -36,7 +36,7 @@ Resources allow GET, POST and DELETE requests by default. Creating a new resourc
 The user can override (or add new) handlers for methods. There are two sets of handlers which are explained in context to the above example of ```resPosts```:
 
 ItemHandlers:
-```
+```go
 resPosts.Handlers["GET"] = func(
     DBObject interface{},
     w http.responseWriter,
@@ -47,7 +47,7 @@ resPosts.Handlers["GET"] = func(
 ItemHandlers refers to the handlers at ```/posts/{id}``` for requests. Here, ```DBObject``` is the item with the specified id if found. Otherwise it is ```nil```.
 
 CollectionHandlers:
-```
+```go
 resPosts.Handlers["GET"] = func(
     DBObjects []interface{},
     w http.responseWriter,
@@ -68,13 +68,13 @@ TODO: Table showing the responses gflux/api provides by default for CollectionHa
 gflux/api supports sqlite3 databases as well as mysql databases.
 
 sqlite3:
-```
+```go
 a := api.New("sqlite3", "test.db")
 defer a.Close()
 ```
 
 mysql:
-```
+```go
 a := api.New("mysql", "user:password@/test")
 defer a.Close()
 ```
