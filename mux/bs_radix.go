@@ -329,7 +329,7 @@ func (t *Trie) insert(r *Route) error {
 
 // Get returns the route, the wilcard values, and
 // whether a match was found for the supplied path.
-func (t *Trie) Get(s string, method string) (*Route, map[string]string, bool) {
+func (t *Trie) Get(s string) (*Route, map[string]string, bool) {
 	if s == "/" {
 		return t.root.val, nil, true
 	}
@@ -340,7 +340,7 @@ func (t *Trie) Get(s string, method string) (*Route, map[string]string, bool) {
 	}
 	s = strings.TrimPrefix(s, "/")
 
-	n, found, remains := t.getLiteral(s, method, t.root)
+	n, found, remains := t.getLiteral(s, t.root)
 	if found {
 		return n.val, nil, true
 	}
@@ -351,7 +351,7 @@ func (t *Trie) Get(s string, method string) (*Route, map[string]string, bool) {
 		return nil, nil, false
 	}
 
-	val, found2, mp := t.getWildCard(remains, method, n)
+	val, found2, mp := t.getWildCard(remains, n)
 	
 	if found2 {
 		return val, mp, true
@@ -377,7 +377,7 @@ func (n *node) hasMethodHandler(method string) bool{
 	return false
 }
 
-func (t *Trie) getLiteral(s string, method string, n *node) (*node, bool, string) {
+func (t *Trie) getLiteral(s string, n *node) (*node, bool, string) {
 	var child *node
 
 	search := s
@@ -388,7 +388,7 @@ func (t *Trie) getLiteral(s string, method string, n *node) (*node, bool, string
 		t.lastLevel = n
 		// Check for key exhaution
 		if len(search) == 0 {
-			if n.hasValue() && n.hasMethodHandler(method) {
+			if n.hasValue() {
 				return n, true, ""
 			}
 			break
@@ -424,7 +424,7 @@ func (t *Trie) getLiteral(s string, method string, n *node) (*node, bool, string
 
 // Get is used to lookup a specific key, returning
 // the value and if it was found
-func (t *Trie) getWildCard(s string, method string, n *node) (*Route, bool, map[string]string) {
+func (t *Trie) getWildCard(s string, n *node) (*Route, bool, map[string]string) {
 	if n == nil {
 		return nil, false, nil
 	}
@@ -436,7 +436,7 @@ func (t *Trie) getWildCard(s string, method string, n *node) (*Route, bool, map[
 	m := make(map[string]string)
 
 	for len(search) != 0 && n != nil {
-		if len(search) == 0 && n.hasValue()  && n.hasMethodHandler(method) {
+		if len(search) == 0 && n.hasValue() {
 			return n.val, true, m
 		}
 
@@ -468,7 +468,7 @@ func (t *Trie) getWildCard(s string, method string, n *node) (*Route, bool, map[
 		// Consume the search prefix
 		if strings.HasPrefix(search, n.prefix) {
 			search = search[len(n.prefix):]
-			rNode, found, remains = t.getLiteral(search, method, n)
+			rNode, found, remains = t.getLiteral(search, n)
 			if found {
 				m[wcKey] = replacedText
 				return rNode.val, found, m
@@ -487,8 +487,7 @@ func (t *Trie) getWildCard(s string, method string, n *node) (*Route, bool, map[
 		return nil, false, nil
 	}
 
-	if n.hasValue()  && n.hasMethodHandler(method) {
-		// n.val.Tokens = append(n.val.Tokens, search)
+	if n.hasValue() {
 		return n.val, true, m
 	} else {
 		return nil, false, nil

@@ -44,8 +44,7 @@ func (m *Mux) handle(path string, mw []Middleware, h http.Handler, method string
 		handler:    h,
 		method: method,
 	}
-	// TODO: insert currently returns an error if r.path already exists.
-	// Instead, it should return an error only if same r.path
+	// insert returns an error if same r.path
 	// with at least one of the same HTTP methods already exists.
 	if err := m.trie.insert(r); err != nil {
 		panic(err)
@@ -112,20 +111,59 @@ func run(w http.ResponseWriter, r *http.Request, mw []Middleware, h http.Handler
 }
 
 func (m *Mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	route, p, found := m.trie.Get(r.URL.Path, r.Method)
-	if (found && roue != nil) {
-		r = SetParams(r, Params(p))
-		run(w, r, route.middleware, route.handler)
+	route, p, found := m.trie.Get(r.URL.Path)
+
+	if !found || route == nil{
+		if  m.NotFound != nil {
+			m.NotFound.ServeHTTP(w, r)
+		} else {
+			http.NotFound(w, r)
+
+		}
 		return
 	}
 
-	if m.NotFound != nil {
-		m.NotFound.ServeHTTP(w, r)
-	} else {
-		http.NotFound(w, r)
+	if r.Method == MethodOptions {
+		var allowed string
+		for key, _ := range route.handlers {
+       if len(allowed) == 0 {
+				allowed = key
+			} else {
+				allowed += ", " + key
+			}
+    }
+    w.Header().Set("Allow", allowed)
+		return
 	}
+
+	handl, err := route.getAllowed(r.Method)
+	if err != nil {
+		http.Error(w,
+					http.StatusText(http.StatusMethodNotAllowed),
+					http.StatusMethodNotAllowed,
+				)
+		return
+	}
+	
+	r = SetParams(r, Params(p))
+	run(w, r, route.middleware, handl)
+	
+	return
 }
 
 func (m *Mux) SetNotFound(handler http.Handler) {
  		m.NotFound = handler
  }
+
+
+func (r *Route) getAllowed(method string) (http.Handler, error){ 
+ 	if handl, ok := r.handlers[MethodAll]; ok {
+		return handl, nil
+	}
+
+	if handl, ok := r.handlers[method]; ok {
+		return handl, nil
+	}
+
+	return nil, errors.New("Not allowed")
+}
