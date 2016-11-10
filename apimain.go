@@ -1,7 +1,7 @@
 package main
 
 import (
-    "./api"
+    "github.com/go-web-framework/gflux/api"
 )
 
 type Post struct {
