@@ -1,4 +1,3 @@
-// package api allows for easy creation of REST APIs
 package api
 
 import (
@@ -25,7 +24,7 @@ func InitDB(driver string, filepath string) *Orm {
 	return &Orm{db}
 }
 
-// Close database
+// Close closes the database.
 func (o *Orm) Close() {
 	o.DB.Close()
 }
@@ -66,7 +65,7 @@ func (o *Orm) CreateTable(name string, schemaType interface{}) *Orm {
 	return o
 }
 
-func (o *Orm) Find(t reflect.Type, tableName string, id string) interface{} {
+func (o *Orm) FindById(t reflect.Type, tableName string, id string) interface{} {
 	// Panics
 	if t.Kind().String() != "struct" {
 		panic("Table find : schema type must be a struct")
@@ -159,8 +158,8 @@ func (o *Orm) FindAll(t reflect.Type, tableName string) []interface{} {
 	return ret
 }
 
-func (o *Orm) FindAndDelete(t reflect.Type, tableName string, id string) interface{} {
-	ret := o.Find(t, tableName, id)
+func (o *Orm) DeleteById(t reflect.Type, tableName string, id string) interface{} {
+	ret := o.FindById(t, tableName, id)
 	
 	// Don't try deleting if doesnt exist
 	if ret == nil {

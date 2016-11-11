@@ -1,4 +1,3 @@
-// package api allows for easy creation of REST APIs
 package api
 
 import (
@@ -6,8 +5,10 @@ import (
 	"net/http"
 	"reflect"
 	"fmt"
+	"strings"
 )
 
+// TODO: Define this for the godoc.
 type Resource struct {
 	Name     string
 	Type     reflect.Type
@@ -16,7 +17,29 @@ type Resource struct {
 	CollectionHandlers map[string]func([]interface{}, http.ResponseWriter, []string)
 }
 
-func NewResource(name string, structType interface{}, api *API) *Resource {
+// SetItemHandler overrides or adds the given handler to be called
+// when a request with the specified method is made to /name/{id}.
+// The function handler receives the item with the requested id.
+// If DELETE, the object will have already been deleted.
+// If no object exists in the database with the id, the object passed
+// to the handler function is nil.
+// The handler function also receives a slice containing the accepts in
+// the form of ["application/json", "application/xml"].
+func (res *Resource) SetItemHandler(method string, handler func(object interface{}, w http.ResponseWriter, accepts []string)) {
+	res.ItemHandlers[strings.ToUpper(method)] = handler
+}
+
+// SetItemHandler overrides or adds the given handler to be called
+// when a request with the specified method is made to /name/{id}.
+// The function handler receives all items in the database.
+// If the database is empty, it receives nil.
+// The handler function also receives a slice containing the accepts in
+// the form of ["application/json", "application/xml"].
+func (res *Resource) SetCollectionHandler(method string, handler func(objects []interface{}, w http.ResponseWriter, accepts []string)) {
+	res.CollectionHandlers[strings.ToUpper(method)] = handler
+}
+
+func newResource(name string, structType interface{}, api *API) *Resource {
 	t := reflect.TypeOf(structType)
 
 	// If ptr, dereference schema type
@@ -57,9 +80,9 @@ func (h itemHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// query database
 		var obj interface{}
 		if(r.Method == "DELETE"){
-			obj = api.DB.FindAndDelete(res.Type, res.Name, id)
+			obj = api.DB.DeleteById(res.Type, res.Name, id)
 		} else {
-			obj = api.DB.Find(res.Type, res.Name, id)
+			obj = api.DB.FindById(res.Type, res.Name, id)
 		}
 		
 		// call handler

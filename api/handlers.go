@@ -1,4 +1,3 @@
-// package api allows for easy creation of REST APIs
 package api
 
 import (
