@@ -99,10 +99,24 @@ We are currently using the drivers at [github.com/mattn/go-sqlite3]([github.com/
 * Order of struct variables MIGHT matter to the code
 * Current implementation still requires all methods to be processed in ServeHTTP() in resource.go (The user would not be able to handle DELETE from scratch in their override handlers since gflux/api takes care of the database queries before calling the override handlers).
 
+# API Calls
+
+```
+curl -X GET localhost:8080/{name}
+```
+```
+curl -X GET localhost:8080/{name}/{id}
+```
+```
+curl -X DELETE localhost:8080/{name}/{id}
+```
+```
+curl -H "Content-Type: application/json" -d '{"Field1":"value1","Field2":"value2"}' http://localhost:8080/{name}
+```
+
 # TODOs
-* POST handlers
-* Allow()
+* Check accepts
 * Change imports to github.com/go-web-framework
 * If the name gflux changes, this might affect some panic statements
 * Move apimain.go to examples
-* Should panic() and Println() be log.Fatal() and log.Printf()?
+* Create a logger interface so that panic() and Println() can be log.Fatal() and log.Printf()

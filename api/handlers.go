@@ -112,5 +112,31 @@ func defaultItemDELETE(obj interface{}, w http.ResponseWriter, accepts []string)
 //	}
 //}
 
-func defaultItemPUT(interface{}, http.ResponseWriter, []string) {
+func defaultCollectionPOST(objs []interface{}, w http.ResponseWriter, accepts []string) {
+	if len(accepts) > 1 {
+		panic("ERROR with POST: Override the POST CollectionHandler to support accepts other than application/json")
+	} else if accepts[0] != "application/json" {
+		panic("ERROR with POST: Override the POST CollectionHandler to support accepts other than application/json")
+	}
+
+	// if object was put into database
+	if objs != nil && len(objs) > 0 && objs[0] != nil {
+		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+		w.WriteHeader(http.StatusCreated)
+		err := json.NewEncoder(w).Encode(objs[0])
+		if err != nil {
+			panic(err)
+		}
+	} else {
+		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		jsonErr := struct {
+			Code int
+			Text string
+		}{Code: http.StatusUnprocessableEntity, Text: "Unprocessable Entity"}
+		err := json.NewEncoder(w).Encode(jsonErr)
+		if err != nil {
+			panic(err)
+		}
+	}
 }

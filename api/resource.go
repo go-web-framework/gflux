@@ -2,19 +2,23 @@ package api
 
 import (
 	"../mux"
+	"encoding/json"
+	"fmt"
+	"io"
+	"io/ioutil"
 	"net/http"
 	"reflect"
-	"fmt"
 	"strings"
 )
 
 // TODO: Define this for the godoc.
 type Resource struct {
-	Name     string
-	Type     reflect.Type
-	api      *API
-	ItemHandlers map[string]func(interface{}, http.ResponseWriter, []string)
+	Name               string
+	Type               reflect.Type
+	api                *API
+	ItemHandlers       map[string]func(interface{}, http.ResponseWriter, []string)
 	CollectionHandlers map[string]func([]interface{}, http.ResponseWriter, []string)
+	methods            map[string]struct{}
 }
 
 // SetItemHandler overrides or adds the given handler to be called
@@ -25,8 +29,9 @@ type Resource struct {
 // to the handler function is nil.
 // The handler function also receives a slice containing the accepts in
 // the form of ["application/json", "application/xml"].
-func (res *Resource) SetItemHandler(method string, handler func(object interface{}, w http.ResponseWriter, accepts []string)) {
+func (res *Resource) SetItemHandler(method string, handler func(object interface{}, w http.ResponseWriter, accepts []string)) *Resource {
 	res.ItemHandlers[strings.ToUpper(method)] = handler
+	return res
 }
 
 // SetItemHandler overrides or adds the given handler to be called
@@ -35,8 +40,20 @@ func (res *Resource) SetItemHandler(method string, handler func(object interface
 // If the database is empty, it receives nil.
 // The handler function also receives a slice containing the accepts in
 // the form of ["application/json", "application/xml"].
-func (res *Resource) SetCollectionHandler(method string, handler func(objects []interface{}, w http.ResponseWriter, accepts []string)) {
+func (res *Resource) SetCollectionHandler(method string, handler func(objects []interface{}, w http.ResponseWriter, accepts []string)) *Resource {
 	res.CollectionHandlers[strings.ToUpper(method)] = handler
+	return res
+}
+
+//TODO: godoc
+func (res *Resource) Allow(method string) *Resource {
+	res.methods[strings.ToUpper(method)] = struct{}{}
+	return res
+}
+
+func (res *Resource) Disallow(method string) *Resource {
+	delete(res.methods, strings.ToUpper(method))
+	return res
 }
 
 func newResource(name string, structType interface{}, api *API) *Resource {
@@ -47,16 +64,23 @@ func newResource(name string, structType interface{}, api *API) *Resource {
 		t = t.Elem()
 	}
 
-	r := Resource{Name: name, Type: t, api: api}
-	
-	r.ItemHandlers = make(map[string]func(interface{}, http.ResponseWriter, []string))
-	r.ItemHandlers["GET"] = defaultItemGET
-	r.ItemHandlers["DELETE"] = defaultItemDELETE
-	
-	r.CollectionHandlers = make(map[string]func([]interface{}, http.ResponseWriter, []string))
-	r.CollectionHandlers["GET"] = defaultCollectionGET
+	res := Resource{Name: name, Type: t, api: api}
 
-	return &r
+	// initialize the allowed methods
+	res.methods = make(map[string]struct{})
+	res.methods["GET"] = struct{}{}
+	res.methods["POST"] = struct{}{}
+	res.methods["DELETE"] = struct{}{}
+
+	res.ItemHandlers = make(map[string]func(interface{}, http.ResponseWriter, []string))
+	res.ItemHandlers["GET"] = defaultItemGET
+	res.ItemHandlers["DELETE"] = defaultItemDELETE
+
+	res.CollectionHandlers = make(map[string]func([]interface{}, http.ResponseWriter, []string))
+	res.CollectionHandlers["GET"] = defaultCollectionGET
+	res.CollectionHandlers["POST"] = defaultCollectionPOST
+
+	return &res
 }
 
 type itemHandler struct {
@@ -73,18 +97,20 @@ func (h itemHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// find id from request
 	id := mux.GetParams(r)["id"]
-	
-	// Check if handler has been implemented for the request method
+
+	// Check if method is allowed and
+	// handler has been implemented for the request method
+	_, allowed := res.methods[r.Method]
 	_, exists := res.ItemHandlers[r.Method]
-	if exists == true {
+	if exists && allowed {
 		// query database
 		var obj interface{}
-		if(r.Method == "DELETE"){
+		if r.Method == "DELETE" {
 			obj = api.DB.DeleteById(res.Type, res.Name, id)
 		} else {
 			obj = api.DB.FindById(res.Type, res.Name, id)
 		}
-		
+
 		// call handler
 		res.ItemHandlers[r.Method](obj, w, []string{"application/json"})
 	} else {
@@ -99,12 +125,34 @@ func (h itemHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (h collectionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	res := h.res
 	api := res.api
-	
-	// Check if handler has been implemented for the request method
+
+	// Check if method is allowed and
+	// handler has been implemented for the request method
+	_, allowed := res.methods[r.Method]
 	_, exists := res.CollectionHandlers[r.Method]
-	if exists == true {
-		// read from database
-		objs := api.DB.FindAll(res.Type, res.Name)
+	if exists && allowed {
+		var objs []interface{}
+		if r.Method == "POST" {
+			obj := reflect.New(res.Type).Interface()
+
+			// limit body size to avoid injection
+			body, err := ioutil.ReadAll(io.LimitReader(r.Body, 1048576))
+			if err != nil {
+				panic(err)
+			}
+			if err := r.Body.Close(); err != nil {
+				panic(err)
+			}
+			if err := json.Unmarshal(body, &obj); err != nil {
+				panic(err)
+			}
+
+			// insert into database
+			objs = api.DB.Insert(obj, res.Name)
+		} else {
+			// read from database
+			objs = api.DB.FindAll(res.Type, res.Name)
+		}
 		res.CollectionHandlers[r.Method](objs, w, []string{"application/json"})
 	} else {
 		fmt.Println(r.RequestURI + " does not have a " + r.Method + " method defined")
