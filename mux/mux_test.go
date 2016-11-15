@@ -517,7 +517,8 @@ func TestMethodHandling3(t *testing.T) {
 // Create a POST handler only for a path. POST request should return the handler
 func TestMethodHandling4(t *testing.T) {
 	mux := New()
-	call := false
+	call := true
+
 	mux.GET("/a", nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
 		call = false
 	}))
@@ -537,13 +538,13 @@ func TestMethodHandling4(t *testing.T) {
 		call = false
 	}))
 	mux.PATCH("/a", nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
-		call = false
+		call = true
 	}))
 	mux.Handle("/a", nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
 		call = true
 	}))
 
-	r, _ := http.NewRequest("OPTIONS", "/a/", nil)
+	r, _ := http.NewRequest("POST", "/a", nil)
 	w := httptest.NewRecorder()
 	mux.ServeHTTP(w, r)
 
@@ -572,19 +573,19 @@ func TestWildcardMethodHandling(t *testing.T) {
 	mux.HEAD("/{a}/{b}/{c}", nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
 		call = false
 	}))
-	mux.PUT("/{a}/{b}/{c}", nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
-		call = false
+	mux.PUT("/{a}/{b}/{c}", nil, http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		call = true
+		paramCheck, errStr = checkParams(req, []string{"a", "b", "c"}, []string{"e", "f", "g"})
 	}))
 	mux.OPTIONS("/{a}/{b}/{c}", nil, http.HandlerFunc(func(w http.ResponseWriter, r2 *http.Request) {
-		call = true
-		paramCheck, errStr = checkParams(r2, []string{"a", "b", "c"}, []string{"e", "f", "g"})
+		call = false
 	}))
 	mux.PATCH("/{a}/{b}/{c}", nil, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
 		call = false
 	}))
 
 
-	r, _ := http.NewRequest("OPTIONS", "/e/f/g/", nil)
+	r, _ := http.NewRequest("PUT", "/e/f/g/", nil)
 	w := httptest.NewRecorder()
 	mux.ServeHTTP(w, r)
 
