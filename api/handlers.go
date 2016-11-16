@@ -3,12 +3,12 @@ package api
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 )
 
-func defaultItemGET(obj interface{}, w http.ResponseWriter, accepts []string) {
-	if len(accepts) > 1 {
-		panic("ERROR with GET: Override the GET ItemHandler to support accepts other than application/json")
-	} else if accepts[0] != "application/json" {
+func defaultItemGET(w http.ResponseWriter, r *http.Request, obj interface{}) {
+	accept := r.Header.Get("Accept")
+	if !strings.Contains(accept, "application/json") && !strings.Contains(accept, "*/*") {
 		panic("ERROR with GET: Override the GET ItemHandler to support accepts other than application/json")
 	}
 
@@ -34,10 +34,9 @@ func defaultItemGET(obj interface{}, w http.ResponseWriter, accepts []string) {
 	}
 }
 
-func defaultCollectionGET(objs []interface{}, w http.ResponseWriter, accepts []string) {
-	if len(accepts) > 1 {
-		panic("ERROR with GET: Override the GET CollectionHandler to support accepts other than application/json")
-	} else if accepts[0] != "application/json" {
+func defaultCollectionGET(w http.ResponseWriter, r *http.Request, objs []interface{}) {
+	accept := r.Header.Get("Accept")
+	if !strings.Contains(accept, "application/json") && !strings.Contains(accept, "*/*") {
 		panic("ERROR with GET: Override the GET CollectionHandler to support accepts other than application/json")
 	}
 
@@ -63,10 +62,9 @@ func defaultCollectionGET(objs []interface{}, w http.ResponseWriter, accepts []s
 	}
 }
 
-func defaultItemDELETE(obj interface{}, w http.ResponseWriter, accepts []string) {
-	if len(accepts) > 1 {
-		panic("ERROR with DELETE: Override the DELETE ItemHandler to support accepts other than application/json")
-	} else if accepts[0] != "application/json" {
+func defaultItemDELETE(w http.ResponseWriter, r *http.Request, obj interface{}) {
+	accept := r.Header.Get("Accept")
+	if !strings.Contains(accept, "application/json") && !strings.Contains(accept, "*/*") {
 		panic("ERROR with DELETE: Override the DELETE ItemHandler to support accepts other than application/json")
 	}
 
@@ -92,30 +90,9 @@ func defaultItemDELETE(obj interface{}, w http.ResponseWriter, accepts []string)
 	}
 }
 
-//func defaultCollectionDELETE(objs []interface{}, w http.ResponseWriter, accepts []string) {
-//	if len(accepts) > 1 {
-//		panic("ERROR with DELETE: Override the DELETE CollectionHandler to support accepts other than application/json")
-//	} else if accepts[0] != "application/json" {
-//		panic("ERROR with DELETE: Override the DELETE CollectionHandler to support accepts other than application/json")
-//	}
-
-//	// always return 404
-//	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-//	w.WriteHeader(http.StatusNotFound)
-//	jsonErr := struct {
-//		Code int
-//		Text string
-//	}{Code: http.StatusNotFound, Text: "Not Found"}
-//	err := json.NewEncoder(w).Encode(jsonErr)
-//	if err != nil {
-//		panic(err)
-//	}
-//}
-
-func defaultCollectionPOST(objs []interface{}, w http.ResponseWriter, accepts []string) {
-	if len(accepts) > 1 {
-		panic("ERROR with POST: Override the POST CollectionHandler to support accepts other than application/json")
-	} else if accepts[0] != "application/json" {
+func defaultCollectionPOST(w http.ResponseWriter, r *http.Request, objs []interface{}) {
+	accept := r.Header.Get("Accept")
+	if !strings.Contains(accept, "application/json") && !strings.Contains(accept, "*/*") {
 		panic("ERROR with POST: Override the POST CollectionHandler to support accepts other than application/json")
 	}
 
