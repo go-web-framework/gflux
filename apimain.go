@@ -9,7 +9,7 @@ package main
 //    Author string
 //}
 
-//func main() {
+func main() {
 //    a := api.New("sqlite3", "test.db")
 //    //	a := api.New("mysql", "user:password@/test")
 //    defer a.Close()
@@ -17,4 +17,4 @@ package main
 //    a.NewResource("posts", &Post{})
 
 //    a.Serve()
-//}
+}
