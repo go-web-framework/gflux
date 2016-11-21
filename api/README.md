@@ -37,23 +37,23 @@ The user can override (or add new) handlers for methods. There are two sets of h
 
 ItemHandlers:
 ```go
-resPosts.Handlers["GET"] = func(
-    DBObject interface{},
-    w http.responseWriter,
-    accepts []string){
+resPosts.SetItemHandler("GET", func(
+    w http.ResponseWriter,
+    r *http.Request,
+    DBObject interface{}){
     // OVERRIDE FUNCTION HERE
-})
+}))
 ```
 ItemHandlers refers to the handlers at ```/posts/{id}``` for requests. Here, ```DBObject``` is the item with the specified id if found. Otherwise it is ```nil```.
 
 CollectionHandlers:
 ```go
-resPosts.Handlers["GET"] = func(
-    DBObjects []interface{},
-    w http.responseWriter,
-    accepts []string){
+resPosts.SetCollectionHandler("GET", func(
+    w http.ResponseWriter,
+    r *http.Request,
+    DBObjects []interface{}){
     // OVERRIDE FUNCTION HERE
-})
+}))
 ```
 CollectionHandlers refers to handlers at ```/posts``` for requests. Here, ```DBObjects``` is the complete list of objects in the database if any exist.
 
@@ -61,7 +61,39 @@ CollectionHandlers refers to handlers at ```/posts``` for requests. Here, ```DBO
 
 As mentioned before, only GET, POST and DELETE are supported. The user must add Handlers to handle other request methods or allow for accepts other than ```application/json```.
 
-TODO: Table showing the responses gflux/api provides by default for CollectionHandlers and ItemHandlers.
+The following shows the default behavior for CollectionHandlers and ItemHandlers:
+
+### ItemHandlers
+
+* GET: Returns the object as json with response 200 StatusOK. If requested ID does not exist, returns error object as json with response 404 StatusNotFound.
+* POST: Program returns 404 StatusNotFound as POST ItemHandler is undefined.
+* DELETE: Returns the deleted object as json with response 200 StatusOK. If requested ID does not exist, returns error object as json with response 404 StatusNotFound.
+
+### CollectionHandlers
+
+* GET: Returns an array of all objects in the database as json with response 200 StatusOK. If database is empty, returns error object as json with response 404 StatusNotFound.
+* POST: Returns the posted object as json with 201 StatusCreated. If request was unprocessable, returns error object as json with response 422 StatusUnprocessableEntity.
+* DELETE: Program returns 404 StatusNotFound as DELETE CollectionHandler is undefined.
+
+## Allowing Methods
+
+Methods can be allowed and disallowed. For example, if the user did not want their API resource `resPosts` to allow DELETE methods, the following line could be called:
+
+```go
+resPosts.Disallow("DELETE")
+```
+Now whenever a DELETE request is made on ```/posts``` or ```/posts/{id}```, 404 StatusNotFound will be returned.
+
+GET, POST and DELETE are allowed by default. If the user wanted to allow PATCH and PUT requests, for example, the following line would help:
+
+```go
+resPosts.Allow("PATCH", "PUT")
+```
+
+Of course, the user would also have to implement the handlers for these requests using SetItemHandler and/or SetCollectionHandler.
+
+Both ```Allow()``` and ```Disallow()``` accept variadic arguments.
+
 
 ## Database Support
 
@@ -115,8 +147,5 @@ curl -H "Content-Type: application/json" -d '{"Field1":"value1","Field2":"value2
 ```
 
 # TODOs
-* Check accepts
-* Change imports to github.com/go-web-framework
-* If the name gflux changes, this might affect some panic statements
 * Move apimain.go to examples
 * Create a logger interface so that panic() and Println() can be log.Fatal() and log.Printf()
