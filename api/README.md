@@ -113,6 +113,39 @@ defer a.Close()
 
 We are currently using the drivers at [github.com/mattn/go-sqlite3]([github.com/mattn/go-sqlite3]) for sqlite3 and [github.com/go-sql-driver/mysql](github.com/go-sql-driver/mysql) for mysql.
 
+# API Calls
+
+## http
+
+```
+http GET localhost:8080/{name}
+```
+```
+http GET localhost:8080/{name}/{id}
+```
+```
+http DELETE localhost:8080/{name}/{id}
+```
+```
+http POST http://localhost:8080/{name} Field1=value1 Field2=value2
+```
+
+## curl
+
+```
+curl -X GET localhost:8080/{name}
+```
+```
+curl -X GET localhost:8080/{name}/{id}
+```
+```
+curl -X DELETE localhost:8080/{name}/{id}
+```
+```
+curl -H "Content-Type: application/json" -d '{"Field1":"value1","Field2":"value2"}' http://localhost:8080/{name}
+```
+
+
 # Drawbacks
 
 ## User Drawbacks
@@ -130,21 +163,6 @@ We are currently using the drivers at [github.com/mattn/go-sqlite3]([github.com/
 * Case-sensitive for some things
 * Order of struct variables MIGHT matter to the code
 * Current implementation still requires all methods to be processed in ServeHTTP() in resource.go (The user would not be able to handle DELETE from scratch in their override handlers since gflux/api takes care of the database queries before calling the override handlers).
-
-# API Calls
-
-```
-curl -X GET localhost:8080/{name}
-```
-```
-curl -X GET localhost:8080/{name}/{id}
-```
-```
-curl -X DELETE localhost:8080/{name}/{id}
-```
-```
-curl -H "Content-Type: application/json" -d '{"Field1":"value1","Field2":"value2"}' http://localhost:8080/{name}
-```
 
 # TODOs
 * Move apimain.go to examples
